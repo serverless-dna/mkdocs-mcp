@@ -15,6 +15,7 @@ Follow the installation instructions please follow the [Model Context Protocol Q
         "-y",
         "@serverless-dna/mkdocs-mcp",
         "https://your-doc-site",
+        "Describe what you are enabling search for to help your AI Agent"
       ]
     }
   }
@@ -84,7 +85,8 @@ The output is a bundled file which enables Node installed in windows to run the 
     "powertools": {
 	"command": "node",
 	"args": [
-	  "\\\\wsl$\\Ubuntu\\home\\walmsles\\dev\\serverless-dna\\mkdocs-mcp\\dist\\index.js"
+	  "\\\\wsl$\\Ubuntu\\home\\walmsles\\dev\\serverless-dna\\mkdocs-mcp\\dist\\index.js",
+    "Search online documentation"
 	]
     }
   }
