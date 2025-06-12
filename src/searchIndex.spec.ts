@@ -12,6 +12,15 @@ jest.mock('./services/fetch', () => {
       });
     }
     
+    // Check if this is a versions.json request for non-versioned site
+    if (url.includes('non-versioned-site.com/versions.json')) {
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found'
+      });
+    }
+    
     // Check if this is a versions.json request
     if (url.includes('versions.json')) {
       return Promise.resolve({
@@ -474,6 +483,54 @@ describe('[Search-Index] When testing version resolution', () => {
     const versionInfo = await factory.resolveVersion('invalid-version');
     expect(versionInfo.valid).toBe(false);
     expect(versionInfo.available).toBeDefined();
+  });
+});
+
+describe('[Search-Index] When working with non-versioned sites', () => {
+  const baseUrl = 'https://non-versioned-site.com';
+  const factory = new SearchIndexFactory(baseUrl);
+  
+  it('should handle non-versioned sites correctly', async () => {
+    const versionInfo = await factory.resolveVersion('latest');
+    expect(versionInfo.valid).toBe(true);
+    expect(versionInfo.hasVersions).toBe(false);
+    expect(versionInfo.resolved).toBe('latest'); // Should return the requested version in non-versioned mode
+  });
+  
+  it('should load index for non-versioned site', async () => {
+    const index = await factory.getIndex('latest');
+    expect(index).toBeDefined();
+    expect(index?.version).toBe('latest'); // In non-versioned mode, we still use the requested version
+    expect(index?.index).toBeDefined();
+    expect(index?.documents).toBeDefined();
+  });
+  
+  it('should construct URLs correctly for non-versioned sites', () => {
+    const getSearchIndexUrl = (baseUrl: string, version = 'latest', hasVersions = true): string => {
+      if (!hasVersions) {
+        return `${baseUrl}/search/search_index.json`;
+      }
+      return `${baseUrl}/${version}/search/search_index.json`;
+    };
+    
+    // Test non-versioned URL
+    const nonVersionedUrl = getSearchIndexUrl(baseUrl, 'latest', false);
+    expect(nonVersionedUrl).toEqual('https://non-versioned-site.com/search/search_index.json');
+    
+    // Test versioned URL for comparison
+    const versionedUrl = getSearchIndexUrl(baseUrl, 'latest', true);
+    expect(versionedUrl).toEqual('https://non-versioned-site.com/latest/search/search_index.json');
+  });
+  
+  it('should search successfully in non-versioned mode', async () => {
+    const index = await factory.getIndex('latest');
+    
+    if (!index?.index || !index?.documents) {
+      throw new Error('Index not properly loaded');
+    }
+    
+    const results = searchDocuments(index.index, index.documents, 'logger');
+    expect(results.length).toBeGreaterThan(0);
   });
 });
 

@@ -4,7 +4,28 @@ A Model Context Protocol (MCP) server that provides search functionality for any
 
 ## Claude Desktop Quickstart
 
-Follow the installation instructions please follow the [Model Context Protocol Quickstart For Claude Desktop users](https://modelcontextprotocol.io/quickstart/user#mac-os-linux).  You will need to add a section tothe MCP configuration file as follows:
+Follow the installation instructions please follow the [Model Context Protocol Quickstart For Claude Desktop users](https://modelcontextprotocol.io/quickstart/user#mac-os-linux).  You will need to add a section to the MCP configuration file as follows:
+
+### For Versioned Documentation Sites
+
+```json
+{
+  "mcpServers": {
+    "my-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@serverless-dna/mkdocs-mcp",
+        "https://your-doc-site",
+        "--versioned",
+        "Describe what you are enabling search for to help your AI Agent"
+      ]
+    }
+  }
+}
+```
+
+### For Non-Versioned Documentation Sites
 
 ```json
 {
@@ -30,7 +51,9 @@ This project implements an MCP server that enables Large Language Models (LLMs) 
 
 - MCP-compliant server for integration with LLMs
 - Local search using lunr.js indexes
-- Version-specific documentation search capability
+- Support for both versioned and non-versioned documentation sites
+- Conditional tool schema based on site type
+- Version-specific documentation search capability (when using `--versioned` flag)
 
 ## Installation
 
@@ -46,16 +69,28 @@ pnpm build
 
 The server can be run as an MCP server that communicates over stdio:
 
+### For Versioned Documentation Sites
+
+```bash
+npx -y @serverless-dna/mkdocs-mcp https://your-doc-site.com --versioned
+```
+
+### For Non-Versioned Documentation Sites
+
 ```bash
 npx -y @serverless-dna/mkdocs-mcp https://your-doc-site.com
 ```
 
 ### Search Tool
 
-The server provides a `search_docs` tool with the following parameters:
+The server provides a `search` tool with parameters that depend on the site type:
 
+**For versioned sites (with `--versioned` flag):**
 - `search`: The search query string
 - `version`: Optional version string (defaults to 'latest')
+
+**For non-versioned sites (default):**
+- `search`: The search query string
 
 ## Development
 

@@ -23,19 +23,46 @@ if (!args[0]) {
 
 const docsUrl = args[0];
 
-const searchDoc = args.slice(1).join(' ') || "search online documentation";
+// Check for --versioned flag
+const versionedFlagIndex = args.findIndex(arg => arg === '--versioned');
+const isVersioned = versionedFlagIndex !== -1;
+
+// Remove the --versioned flag from args if present for searchDoc
+const filteredArgs = args.filter(arg => arg !== '--versioned');
+const searchDoc = filteredArgs.slice(1).join(' ') || "search online documentation";
 
 // Class managing the Search indexes for searching
 const searchIndexes = new SearchIndexFactory(docsUrl);
 
-const searchDocsSchema = z.object({
+// Create schema based on whether the site is versioned
+const baseSearchSchema = z.object({
   search: z.string().describe('what to search for'),
-  version: z.string().optional().describe('version is always semantic 3 digit in the form x.y.z'), 
 });
+
+const versionedSearchSchema = baseSearchSchema.extend({
+  version: z.string().optional().describe('version is always semantic 3 digit in the form x.y.z'),
+});
+
+const searchDocsSchema = isVersioned ? versionedSearchSchema : baseSearchSchema;
 
 const fetchDocSchema = z.object({
   url: z.string().url(),
 });
+
+// Helper function to create error responses
+const createErrorResponse = (error: string, suggestion?: string, availableVersions?: string[]) => {
+  const errorData: any = { error };
+  if (suggestion) errorData.suggestion = suggestion;
+  if (availableVersions) errorData.availableVersions = availableVersions;
+  
+  return {
+    content: [{
+      type: "text" as const,
+      text: JSON.stringify(errorData)
+    }],
+    isError: true
+  };
+};
 
 export const server = new Server(
   {
@@ -80,50 +107,62 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Invalid arguments for search_docs: ${parsed.error}`);
         }
         const search = parsed.data.search.trim();
-        const version = parsed.data.version?.trim().toLowerCase() || 'latest';
+        
+        // Handle version based on whether site is versioned with proper typing
+        const version = isVersioned
+          ? (parsed.data as z.infer<typeof versionedSearchSchema>).version?.trim().toLowerCase() || 'latest'
+          : 'latest';
 
-        // First, check if the version is valid
-        const versionInfo = await searchIndexes.resolveVersion(version);
-        if (!versionInfo.valid) {
-          // Return an error with available versions
-          const availableVersions = versionInfo.available?.map(v => v.version ) || [];
-          
-          return {
-            content: [{ 
-              type: "text", 
-              text: JSON.stringify({
-                error: `Invalid version: ${version}`,
-                availableVersions
-              })
-            }],
-            isError: true
-          };
+        // For non-versioned sites, skip version validation entirely
+        let versionInfo;
+        if (isVersioned) {
+          versionInfo = await searchIndexes.resolveVersion(version);
+          if (!versionInfo.valid && versionInfo.hasVersions) {
+            const availableVersions = versionInfo.available?.map(v => v.version) || [];
+            return createErrorResponse(`Invalid version: ${version}`, undefined, availableVersions);
+          }
+        } else {
+          // For non-versioned sites, create a mock versionInfo
+          versionInfo = { valid: true, hasVersions: false };
         }
 
         // do the search
         const idx = await searchIndexes.getIndex(version);
         if (!idx) {
-          logger.warn(`Invalid index for version: ${version}`);
-          return {
-            content: [{ 
-              type: "text", 
-              text: JSON.stringify({
-                error: `Failed to load index for version: ${version}`,
-                suggestion: "Try using 'latest' version or check network connectivity"
-              })
-            }],
-            isError: true
-          };
+          const errorMsg = versionInfo.hasVersions
+            ? `Failed to load index for version: ${version}`
+            : `Failed to load index (non-versioned mode)`;
+          const suggestion = versionInfo.hasVersions
+            ? "Try using 'latest' version or check network connectivity"
+            : "Check network connectivity";
+          
+          logger.warn(errorMsg);
+          return createErrorResponse(errorMsg, suggestion);
         }
         
         // Use the searchDocuments function to get enhanced results
-        logger.info(`Searching for "${search}" in ${version} (resolved to ${idx.version})`);
+        const searchContext = versionInfo.hasVersions
+          ? `${version} (resolved to ${idx.version})`
+          : 'non-versioned mode';
+        logger.info(`Searching for "${search}" in ${searchContext}`);
+        
+        if (!idx.index || !idx.documents) {
+          logger.error(`Index or documents not properly loaded`);
+          return createErrorResponse(
+            `Index or documents not properly loaded`,
+            "Check network connectivity and try again"
+          );
+        }
+        
         const results = searchDocuments(idx.index, idx.documents, search);
-        logger.info(`Search results for "${search}" in ${version}`, { results: results.length });
+        logger.info(`Search results for "${search}" in ${searchContext}`, { results: results.length });
         
         // Format results for better readability
         const formattedResults = results.map(result => {
-          const url = `${docsUrl}/${idx.version}/${result.ref}`;
+          // Construct URL based on whether we have versions or not
+          const url = versionInfo.hasVersions
+            ? `${docsUrl}/${idx.version}/${result.ref}`
+            : `${docsUrl}/${result.ref}`;
           
           return {
             title: result.title,
