@@ -34,7 +34,13 @@ async function fetchAvailableVersions(baseUrl: string): Promise<Array<{title: st
             return undefined;
         }
         
-        return await response.json();
+        const versions = await response.json();
+        // Check if versions array is empty or null
+        if (!versions || (Array.isArray(versions) && versions.length === 0)) {
+            return undefined;
+        }
+        
+        return versions;
     } catch (error) {
         logger.info(`Error fetching versions: ${error}`);
         return undefined;
@@ -42,14 +48,17 @@ async function fetchAvailableVersions(baseUrl: string): Promise<Array<{title: st
 }
 
 // Function to get the search index URL for a version
-function getSearchIndexUrl(baseUrl: string, version = 'latest'): string {
+function getSearchIndexUrl(baseUrl: string, version = 'latest', hasVersions = true): string {
+    if (!hasVersions) {
+        return `${baseUrl}/search/search_index.json`;
+    }
     return `${baseUrl}/${version}/search/search_index.json`;
 }
 
 // Function to fetch the search index for a version
-async function fetchSearchIndex(baseUrl: string, version = 'latest'): Promise<MkDocsSearchIndex | undefined> {
+async function fetchSearchIndex(baseUrl: string, version = 'latest', hasVersions = true): Promise<MkDocsSearchIndex | undefined> {
     try {
-        const url = getSearchIndexUrl(baseUrl, version);
+        const url = getSearchIndexUrl(baseUrl, version, hasVersions);
         const response = await fetchService.fetch(url, {
             contentType: ContentType.WEB_PAGE,
             headers: {
@@ -136,38 +145,41 @@ export class SearchIndexFactory {
     }
 
     // Resolve version (handle aliases like "latest")
-    async resolveVersion(requestedVersion: string): Promise<{resolved: string, available: Array<{title: string, version: string, aliases: string[]}> | undefined, valid: boolean}> {
+    async resolveVersion(requestedVersion: string): Promise<{resolved: string, available: Array<{title: string, version: string, aliases: string[]}> | undefined, valid: boolean, hasVersions: boolean}> {
         
         const versions = await fetchAvailableVersions(this.baseUrl);
         
-        // If no versions found, return requested version
+        // If no versions found, we're in non-versioned mode
         if (!versions || versions.length === 0) {
-            return { resolved: requestedVersion, available: versions, valid: false };
+            logger.info('No versions.json found or empty, working in non-versioned mode');
+            return { resolved: requestedVersion, available: versions, valid: true, hasVersions: false };
         }
         
         // If requested version is an alias, resolve it
         if (requestedVersion === 'latest') {
             // Find version with "latest" alias
             const latestVersion = versions.find(v => v.aliases.includes('latest'));
-            return { 
-                resolved: latestVersion ? latestVersion.version : versions[0].version, 
+            return {
+                resolved: latestVersion ? latestVersion.version : versions[0].version,
                 available: versions,
-                valid: true
+                valid: true,
+                hasVersions: true
             };
         }
         
         // Check if requested version exists
         const versionExists = versions.some(v => v.version === requestedVersion);
         if (versionExists) {
-            return { resolved: requestedVersion, available: versions, valid: true };
+            return { resolved: requestedVersion, available: versions, valid: true, hasVersions: true };
         }
         
         // Return information about invalid version
         logger.info(`Version ${requestedVersion} not found`);
-        return { 
-            resolved: requestedVersion, 
+        return {
+            resolved: requestedVersion,
             available: versions,
-            valid: false
+            valid: false,
+            hasVersions: true
         };
     }
 
@@ -175,8 +187,8 @@ export class SearchIndexFactory {
         // Resolve version first
         const versionInfo = await this.resolveVersion(version);
         
-        // If version is invalid, return undefined
-        if (!versionInfo.valid) {
+        // If version is invalid AND we have versions (not in non-versioned mode), return undefined
+        if (!versionInfo.valid && versionInfo.hasVersions) {
             return undefined;
         }
         
@@ -188,16 +200,18 @@ export class SearchIndexFactory {
         }
 
         // Load the cache key and return the index result
-        return await this.loadIndexData(resolvedVersion);
+        return await this.loadIndexData(resolvedVersion, versionInfo.hasVersions);
     }
 
-    protected async loadIndexData(version = 'latest'): Promise<SearchIndex | undefined> {
+    protected async loadIndexData(version = 'latest', hasVersions = true): Promise<SearchIndex | undefined> {
         try {
             // Fetch the index data from the live website
-            const mkDocsIndex = await fetchSearchIndex(this.baseUrl, version);
+            const mkDocsIndex = await fetchSearchIndex(this.baseUrl, version, hasVersions);
             
             if (!mkDocsIndex) {
-                const msg = `Failed to fetch index for version [${version}]`;
+                const msg = hasVersions
+                    ? `Failed to fetch index for version [${version}]`
+                    : `Failed to fetch index (non-versioned mode)`;
                 logger.error(msg);
                 return undefined;
             }
@@ -208,7 +222,7 @@ export class SearchIndexFactory {
             // Create the search index
             const searchIndex: SearchIndex = {
                 version,
-                url: getSearchIndexUrl(this.baseUrl, version),
+                url: getSearchIndexUrl(this.baseUrl, version, hasVersions),
                 index,
                 documents
             };
@@ -218,7 +232,10 @@ export class SearchIndexFactory {
             
             return searchIndex;
         } catch (error) {
-            logger.error(`Error loading search index [${version}]: ${error}`);
+            const msg = hasVersions
+                ? `Error loading search index [${version}]: ${error}`
+                : `Error loading search index (non-versioned mode): ${error}`;
+            logger.error(msg);
             return undefined;
         }
     }

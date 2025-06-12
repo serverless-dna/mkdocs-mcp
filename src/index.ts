@@ -30,7 +30,7 @@ const searchIndexes = new SearchIndexFactory(docsUrl);
 
 const searchDocsSchema = z.object({
   search: z.string().describe('what to search for'),
-  version: z.string().optional().describe('version is always semantic 3 digit in the form x.y.z'), 
+  version: z.string().optional().describe('version is always semantic 3 digit in the form x.y.z (not required for non-versioned sites)'),
 });
 
 const fetchDocSchema = z.object({
@@ -84,13 +84,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         // First, check if the version is valid
         const versionInfo = await searchIndexes.resolveVersion(version);
-        if (!versionInfo.valid) {
-          // Return an error with available versions
+        if (!versionInfo.valid && versionInfo.hasVersions) {
+          // Return an error with available versions only if we have versions
           const availableVersions = versionInfo.available?.map(v => v.version ) || [];
           
           return {
-            content: [{ 
-              type: "text", 
+            content: [{
+              type: "text",
               text: JSON.stringify({
                 error: `Invalid version: ${version}`,
                 availableVersions
@@ -103,13 +103,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         // do the search
         const idx = await searchIndexes.getIndex(version);
         if (!idx) {
-          logger.warn(`Invalid index for version: ${version}`);
+          const errorMsg = versionInfo.hasVersions
+            ? `Failed to load index for version: ${version}`
+            : `Failed to load index (non-versioned mode)`;
+          const suggestion = versionInfo.hasVersions
+            ? "Try using 'latest' version or check network connectivity"
+            : "Check network connectivity";
+          
+          logger.warn(errorMsg);
           return {
-            content: [{ 
-              type: "text", 
+            content: [{
+              type: "text",
               text: JSON.stringify({
-                error: `Failed to load index for version: ${version}`,
-                suggestion: "Try using 'latest' version or check network connectivity"
+                error: errorMsg,
+                suggestion
               })
             }],
             isError: true
@@ -117,13 +124,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         
         // Use the searchDocuments function to get enhanced results
-        logger.info(`Searching for "${search}" in ${version} (resolved to ${idx.version})`);
+        const searchContext = versionInfo.hasVersions
+          ? `${version} (resolved to ${idx.version})`
+          : 'non-versioned mode';
+        logger.info(`Searching for "${search}" in ${searchContext}`);
+        
+        if (!idx.index || !idx.documents) {
+          logger.error(`Index or documents not properly loaded`);
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({
+                error: `Index or documents not properly loaded`,
+                suggestion: "Check network connectivity and try again"
+              })
+            }],
+            isError: true
+          };
+        }
+        
         const results = searchDocuments(idx.index, idx.documents, search);
-        logger.info(`Search results for "${search}" in ${version}`, { results: results.length });
+        logger.info(`Search results for "${search}" in ${searchContext}`, { results: results.length });
         
         // Format results for better readability
         const formattedResults = results.map(result => {
-          const url = `${docsUrl}/${idx.version}/${result.ref}`;
+          // Construct URL based on whether we have versions or not
+          const url = versionInfo.hasVersions
+            ? `${docsUrl}/${idx.version}/${result.ref}`
+            : `${docsUrl}/${result.ref}`;
           
           return {
             title: result.title,

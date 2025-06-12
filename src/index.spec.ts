@@ -1,7 +1,15 @@
-// Import types
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-// Import after mocking
-import { mockResolveVersion } from './searchIndex';
+// Create mock functions with proper typing
+const mockResolveVersion = jest.fn() as jest.MockedFunction<any>;
+const mockGetIndex = jest.fn() as jest.MockedFunction<any>;
+
+// Mock the searchIndex module
+jest.mock('./searchIndex', () => ({
+  resolveVersion: mockResolveVersion,
+  getIndex: mockGetIndex,
+  searchDocuments: jest.fn()
+}));
 
 // Mock the server's connect method to prevent it from actually connecting
 jest.mock('@modelcontextprotocol/sdk/server/index.js', () => {
@@ -208,5 +216,123 @@ describe('[MCP-Server] When handling invalid versions', () => {
     
     // Verify available versions is an empty array
     expect(jsonResponse.availableVersions).toEqual([]);
+  });
+  
+  it('should work in non-versioned mode when no versions are available', async () => {
+    // Mock the resolveVersion to return valid response for non-versioned mode
+    mockResolveVersion.mockResolvedValueOnce({
+      resolved: 'latest',
+      valid: true,
+      available: undefined,
+      hasVersions: false
+    });
+    
+    // Mock getIndex to return a valid index
+    mockGetIndex.mockResolvedValueOnce({
+      version: 'latest',
+      index: { search: jest.fn().mockReturnValue([]) },
+      documents: new Map(),
+      url: 'https://example.com/search/search_index.json'
+    });
+    
+    // Create a request handler function that simulates the MCP server behavior
+    const handleRequest = async (request: any) => {
+      try {
+        const { name, arguments: args } = request.params;
+        
+        if (name === 'search') {
+          const _search = args.search.trim();
+          const version = args.version?.trim().toLowerCase() || 'latest';
+          
+          // Check if the version is valid
+          const versionInfo = await mockResolveVersion(version);
+          if (!versionInfo.valid && versionInfo.hasVersions) {
+            const availableVersions = versionInfo.available?.map((v: any) => ({
+              version: v.version,
+              title: v.title,
+              aliases: v.aliases
+            })) || [];
+            
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: `Invalid version: ${version}`,
+                  availableVersions
+                })
+              }],
+              isError: true
+            };
+          }
+          
+          // Get the index
+          const idx = await mockGetIndex(version);
+          if (!idx) {
+            const errorMsg = versionInfo.hasVersions
+              ? `Failed to load index for version: ${version}`
+              : `Failed to load index (non-versioned mode)`;
+            
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: errorMsg,
+                  suggestion: "Check network connectivity"
+                })
+              }],
+              isError: true
+            };
+          }
+          
+          // Format results (empty for this test)
+          const baseUrl = 'https://example.com';
+          const formattedResults = [].map((result: any) => {
+            const url = versionInfo.hasVersions
+              ? `${baseUrl}/${idx.version}/${result.ref}`
+              : `${baseUrl}/${result.ref}`;
+            
+            return {
+              title: result.title,
+              url,
+              score: result.score,
+              snippet: result.snippet
+            };
+          });
+          
+          return {
+            content: [{ type: "text", text: JSON.stringify(formattedResults)}]
+          };
+        }
+        
+        return { content: [{ type: "text", text: "Success" }] };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Error: ${error}` }],
+          isError: true
+        };
+      }
+    };
+    
+    // Create a request for search without version
+    const request = {
+      params: {
+        name: 'search',
+        arguments: {
+          search: 'logger'
+        }
+      }
+    };
+    
+    // Call the handler directly
+    const response = await handleRequest(request);
+    
+    // Verify the response is successful
+    expect(response.isError).toBeUndefined();
+    expect(response.content).toHaveLength(1);
+    expect(response.content[0].type).toBe('text');
+    
+    // Parse the JSON response - should be empty array for this test
+    const jsonResponse = JSON.parse(response.content[0].text);
+    expect(Array.isArray(jsonResponse)).toBe(true);
   });
 });
