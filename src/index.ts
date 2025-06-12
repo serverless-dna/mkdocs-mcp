@@ -23,15 +23,26 @@ if (!args[0]) {
 
 const docsUrl = args[0];
 
-const searchDoc = args.slice(1).join(' ') || "search online documentation";
+// Check for --versioned flag
+const versionedFlagIndex = args.findIndex(arg => arg === '--versioned');
+const isVersioned = versionedFlagIndex !== -1;
+
+// Remove the --versioned flag from args if present for searchDoc
+const filteredArgs = args.filter(arg => arg !== '--versioned');
+const searchDoc = filteredArgs.slice(1).join(' ') || "search online documentation";
 
 // Class managing the Search indexes for searching
 const searchIndexes = new SearchIndexFactory(docsUrl);
 
-const searchDocsSchema = z.object({
-  search: z.string().describe('what to search for'),
-  version: z.string().optional().describe('version is always semantic 3 digit in the form x.y.z (not required for non-versioned sites)'),
-});
+// Create schema based on whether the site is versioned
+const searchDocsSchema = isVersioned
+  ? z.object({
+      search: z.string().describe('what to search for'),
+      version: z.string().optional().describe('version is always semantic 3 digit in the form x.y.z'),
+    })
+  : z.object({
+      search: z.string().describe('what to search for'),
+    });
 
 const fetchDocSchema = z.object({
   url: z.string().url(),
@@ -80,24 +91,34 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Invalid arguments for search_docs: ${parsed.error}`);
         }
         const search = parsed.data.search.trim();
-        const version = parsed.data.version?.trim().toLowerCase() || 'latest';
+        
+        // Handle version based on whether site is versioned
+        const version = isVersioned
+          ? ((parsed.data as any).version?.trim().toLowerCase() || 'latest')
+          : 'latest';
 
-        // First, check if the version is valid
-        const versionInfo = await searchIndexes.resolveVersion(version);
-        if (!versionInfo.valid && versionInfo.hasVersions) {
-          // Return an error with available versions only if we have versions
-          const availableVersions = versionInfo.available?.map(v => v.version ) || [];
-          
-          return {
-            content: [{
-              type: "text",
-              text: JSON.stringify({
-                error: `Invalid version: ${version}`,
-                availableVersions
-              })
-            }],
-            isError: true
-          };
+        // For non-versioned sites, skip version validation entirely
+        let versionInfo;
+        if (isVersioned) {
+          versionInfo = await searchIndexes.resolveVersion(version);
+          if (!versionInfo.valid && versionInfo.hasVersions) {
+            // Return an error with available versions only if we have versions
+            const availableVersions = versionInfo.available?.map(v => v.version ) || [];
+            
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: `Invalid version: ${version}`,
+                  availableVersions
+                })
+              }],
+              isError: true
+            };
+          }
+        } else {
+          // For non-versioned sites, create a mock versionInfo
+          versionInfo = { valid: true, hasVersions: false };
         }
 
         // do the search
