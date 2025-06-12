@@ -35,18 +35,34 @@ const searchDoc = filteredArgs.slice(1).join(' ') || "search online documentatio
 const searchIndexes = new SearchIndexFactory(docsUrl);
 
 // Create schema based on whether the site is versioned
-const searchDocsSchema = isVersioned
-  ? z.object({
-      search: z.string().describe('what to search for'),
-      version: z.string().optional().describe('version is always semantic 3 digit in the form x.y.z'),
-    })
-  : z.object({
-      search: z.string().describe('what to search for'),
-    });
+const baseSearchSchema = z.object({
+  search: z.string().describe('what to search for'),
+});
+
+const versionedSearchSchema = baseSearchSchema.extend({
+  version: z.string().optional().describe('version is always semantic 3 digit in the form x.y.z'),
+});
+
+const searchDocsSchema = isVersioned ? versionedSearchSchema : baseSearchSchema;
 
 const fetchDocSchema = z.object({
   url: z.string().url(),
 });
+
+// Helper function to create error responses
+const createErrorResponse = (error: string, suggestion?: string, availableVersions?: string[]) => {
+  const errorData: any = { error };
+  if (suggestion) errorData.suggestion = suggestion;
+  if (availableVersions) errorData.availableVersions = availableVersions;
+  
+  return {
+    content: [{
+      type: "text" as const,
+      text: JSON.stringify(errorData)
+    }],
+    isError: true
+  };
+};
 
 export const server = new Server(
   {
@@ -92,9 +108,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
         const search = parsed.data.search.trim();
         
-        // Handle version based on whether site is versioned
+        // Handle version based on whether site is versioned with proper typing
         const version = isVersioned
-          ? ((parsed.data as any).version?.trim().toLowerCase() || 'latest')
+          ? (parsed.data as z.infer<typeof versionedSearchSchema>).version?.trim().toLowerCase() || 'latest'
           : 'latest';
 
         // For non-versioned sites, skip version validation entirely
@@ -102,19 +118,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (isVersioned) {
           versionInfo = await searchIndexes.resolveVersion(version);
           if (!versionInfo.valid && versionInfo.hasVersions) {
-            // Return an error with available versions only if we have versions
-            const availableVersions = versionInfo.available?.map(v => v.version ) || [];
-            
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({
-                  error: `Invalid version: ${version}`,
-                  availableVersions
-                })
-              }],
-              isError: true
-            };
+            const availableVersions = versionInfo.available?.map(v => v.version) || [];
+            return createErrorResponse(`Invalid version: ${version}`, undefined, availableVersions);
           }
         } else {
           // For non-versioned sites, create a mock versionInfo
@@ -132,16 +137,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             : "Check network connectivity";
           
           logger.warn(errorMsg);
-          return {
-            content: [{
-              type: "text",
-              text: JSON.stringify({
-                error: errorMsg,
-                suggestion
-              })
-            }],
-            isError: true
-          };
+          return createErrorResponse(errorMsg, suggestion);
         }
         
         // Use the searchDocuments function to get enhanced results
@@ -152,16 +148,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         
         if (!idx.index || !idx.documents) {
           logger.error(`Index or documents not properly loaded`);
-          return {
-            content: [{
-              type: "text",
-              text: JSON.stringify({
-                error: `Index or documents not properly loaded`,
-                suggestion: "Check network connectivity and try again"
-              })
-            }],
-            isError: true
-          };
+          return createErrorResponse(
+            `Index or documents not properly loaded`,
+            "Check network connectivity and try again"
+          );
         }
         
         const results = searchDocuments(idx.index, idx.documents, search);
