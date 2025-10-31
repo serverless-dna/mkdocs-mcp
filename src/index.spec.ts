@@ -1,212 +1,152 @@
-// Import types
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 
-// Import after mocking
-import { mockResolveVersion } from './searchIndex';
-
-// Mock the server's connect method to prevent it from actually connecting
-jest.mock('@modelcontextprotocol/sdk/server/index.js', () => {
-  return {
-    Server: jest.fn().mockImplementation(() => ({
-      setRequestHandler: jest.fn(),
-      getRequestHandler: jest.fn(),
-      connect: jest.fn()
-    }))
-  };
-});
-
-// Mock the logger to prevent console output during tests
+// Mock the logger
 jest.mock('./services/logger', () => ({
   logger: {
     info: jest.fn(),
+    warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn(),
-    warn: jest.fn()
+    debug: jest.fn()
   }
 }));
 
-// Mock the SearchIndexFactory
-jest.mock('./searchIndex', () => {
+// Mock the fetch-doc module
+jest.mock('./fetch-doc', () => ({
+  fetchDocPage: jest.fn()
+}));
+
+// Mock the shared searchIndex module
+jest.mock('./shared/searchIndex', () => {
   const mockResolveVersion = jest.fn();
   const mockGetIndex = jest.fn();
   
+  const mockSearchIndexFactory = jest.fn().mockImplementation(() => ({
+    resolveVersion: mockResolveVersion,
+    getIndex: mockGetIndex
+  }));
+
+  const mockSearchDocuments = jest.fn();
+
   return {
-    SearchIndexFactory: jest.fn().mockImplementation(() => ({
-      resolveVersion: mockResolveVersion,
-      getIndex: mockGetIndex
-    })),
-    searchDocuments: jest.fn(),
-    mockResolveVersion,
-    mockGetIndex
+    SearchIndexFactory: mockSearchIndexFactory,
+    searchDocuments: mockSearchDocuments
   };
 });
 
-// Create a direct test for the handler function
-describe('[MCP-Server] When handling invalid versions', () => {
+// Mock the server module
+jest.mock('./server', () => ({
+  createServer: jest.fn()
+}));
+
+// Mock the StdioServerTransport
+jest.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
+  StdioServerTransport: jest.fn()
+}));
+
+import { logger } from './services/logger';
+import { fetchDocPage } from './fetch-doc';
+import { SearchIndexFactory, searchDocuments } from './shared/searchIndex';
+import { createServer } from './server';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+const mockLogger = logger as jest.Mocked<typeof logger>;
+const mockFetchDocPage = fetchDocPage as jest.MockedFunction<typeof fetchDocPage>;
+const mockSearchDocuments = searchDocuments as jest.MockedFunction<typeof searchDocuments>;
+const mockCreateServer = createServer as jest.MockedFunction<typeof createServer>;
+const mockStdioServerTransport = StdioServerTransport as jest.MockedFunction<typeof StdioServerTransport>;
+
+describe('MkDocs MCP Server', () => {
+  let originalArgv: string[];
+  let originalExit: typeof process.exit;
+  let mockExit: jest.MockedFunction<typeof process.exit>;
+
   beforeEach(() => {
+    originalArgv = process.argv;
+    originalExit = process.exit;
+    mockExit = jest.fn() as any;
+    process.exit = mockExit;
     jest.clearAllMocks();
   });
-  
-  it('should return error with available versions when an invalid version is provided', async () => {
-    // Mock the resolveVersion to return invalid version with available versions
-    mockResolveVersion.mockResolvedValueOnce({
-      resolved: 'invalid-version',
-      valid: false,
-      available: [
-        { version: '3.12.0', title: 'Latest', aliases: ['latest'] },
-        { version: '3.11.0', title: 'Version 3.11.0', aliases: [] },
-        { version: '3.10.0', title: 'Version 3.10.0', aliases: [] }
-      ]
-    });
-    
-    // Create a request handler function that simulates the MCP server behavior
-    const handleRequest = async (request: any) => {
-      try {
-        // This simulates what the server would do with the request
-        const { name, arguments: args } = request.params;
-        
-        if (name === 'search') {
-          const _search = args.search.trim();
-          const version = args.version?.trim().toLowerCase() || 'latest';
-          
-          // Check if the version is valid
-          const versionInfo = await mockResolveVersion(version);
-          if (!versionInfo.valid) {
-            // Return an error with available versions
-            const availableVersions = versionInfo.available?.map((v: any) => ({
-              version: v.version,
-              title: v.title,
-              aliases: v.aliases
-            })) || [];
-            
-            return {
-              content: [{ 
-                type: "text", 
-                text: JSON.stringify({
-                  error: `Invalid version: ${version}`,
-                  availableVersions
-                })
-              }],
-              isError: true
-            };
-          }
-        }
-        
-        return { content: [{ type: "text", text: "Success" }] };
-      } catch (error) {
-        return { 
-          content: [{ type: "text", text: `Error: ${error}` }],
-          isError: true
-        };
-      }
-    };
-    
-    // Create a request for an invalid version
-    const request = {
-      params: {
-        name: 'search',
-        arguments: {
-          search: 'logger',
-          version: 'invalid-version'
-        }
-      }
-    };
-    
-    // Call the handler directly
-    const response = await handleRequest(request);
-    
-    // Verify the response contains error and available versions
-    expect(response.isError).toBe(true);
-    expect(response.content).toHaveLength(1);
-    expect(response.content[0].type).toBe('text');
-    
-    // Parse the JSON response
-    const jsonResponse = JSON.parse(response.content[0].text);
-    
-    // Verify error message
-    expect(jsonResponse.error).toContain('Invalid version: invalid-version');
-    
-    // Verify available versions
-    expect(jsonResponse.availableVersions).toHaveLength(3);
-    expect(jsonResponse.availableVersions[0].version).toBe('3.12.0');
-    expect(jsonResponse.availableVersions[0].aliases).toContain('latest');
-    expect(jsonResponse.availableVersions[1].version).toBe('3.11.0');
-    expect(jsonResponse.availableVersions[2].version).toBe('3.10.0');
+
+  afterEach(() => {
+    process.argv = originalArgv;
+    process.exit = originalExit;
   });
-  
-  it('should return empty available versions array when no versions are found', async () => {
-    // Mock the resolveVersion to return invalid version with no available versions
-    mockResolveVersion.mockResolvedValueOnce({
-      resolved: 'invalid-version',
-      valid: false,
-      available: undefined
+
+  describe('main function', () => {
+    it('should start server with provided arguments', async () => {
+      // Mock process.argv
+      process.argv = ['node', 'index.js', 'https://example.com', 'Test documentation'];
+
+      // Mock server and transport
+      const mockServer = {
+        connect: jest.fn().mockResolvedValue(undefined)
+      };
+      const mockTransport = {};
+      
+      mockCreateServer.mockReturnValue(mockServer as any);
+      mockStdioServerTransport.mockReturnValue(mockTransport as any);
+
+      // Import and run main
+      const { main } = await import('./index'); await main();
+
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockCreateServer).toHaveBeenCalledWith('https://example.com', 'Test documentation');
+      expect(mockStdioServerTransport).toHaveBeenCalled();
+      expect(mockServer.connect).toHaveBeenCalledWith(mockTransport);
+      expect(mockLogger.info).toHaveBeenCalledWith('Starting MkDocs MCP Server');
+      expect(mockLogger.info).toHaveBeenCalledWith('MkDocs MCP Server running on stdio');
     });
-    
-    // Create a request handler function that simulates the MCP server behavior
-    const handleRequest = async (request: any) => {
-      try {
-        // This simulates what the server would do with the request
-        const { name, arguments: args } = request.params;
-        
-        if (name === 'search') {
-          const _search = args.search.trim();
-          const version = args.version?.trim().toLowerCase() || 'latest';
-          
-          // Check if the version is valid
-          const versionInfo = await mockResolveVersion(version);
-          if (!versionInfo.valid) {
-            // Return an error with available versions
-            const availableVersions = versionInfo.available?.map((v: any) => ({
-              version: v.version,
-              title: v.title,
-              aliases: v.aliases
-            })) || [];
-            
-            return {
-              content: [{ 
-                type: "text", 
-                text: JSON.stringify({
-                  error: `Invalid version: ${version}`,
-                  availableVersions
-                })
-              }],
-              isError: true
-            };
-          }
-        }
-        
-        return { content: [{ type: "text", text: "Success" }] };
-      } catch (error) {
-        return { 
-          content: [{ type: "text", text: `Error: ${error}` }],
-          isError: true
-        };
-      }
-    };
-    
-    // Create a request for an invalid version
-    const request = {
-      params: {
-        name: 'search',
-        arguments: {
-          search: 'logger',
-          version: 'invalid-version'
-        }
-      }
-    };
-    
-    // Call the handler directly
-    const response = await handleRequest(request);
-    
-    // Verify the response contains error and empty available versions
-    expect(response.isError).toBe(true);
-    
-    // Parse the JSON response
-    const jsonResponse = JSON.parse(response.content[0].text);
-    
-    // Verify error message
-    expect(jsonResponse.error).toContain('Invalid version: invalid-version');
-    
-    // Verify available versions is an empty array
-    expect(jsonResponse.availableVersions).toEqual([]);
+
+    it('should use default description when none provided', async () => {
+      // Mock process.argv with only URL
+      process.argv = ['node', 'index.js', 'https://example.com'];
+
+      // Mock server and transport
+      const mockServer = {
+        connect: jest.fn().mockResolvedValue(undefined)
+      };
+      const mockTransport = {};
+      
+      mockCreateServer.mockReturnValue(mockServer as any);
+      mockStdioServerTransport.mockReturnValue(mockTransport as any);
+
+      // Import and run main
+      const { main } = await import('./index'); await main();
+
+      // Wait for async operations
+      await new Promise(resolve => setTimeout(resolve, 0));
+
+      expect(mockCreateServer).toHaveBeenCalledWith('https://example.com', 'search online documentation');
+    });
+
+    it('should throw error when no doc site provided', async () => {
+      // Mock process.argv with no URL
+      process.argv = ['node', 'index.js'];
+
+      // Import and expect main to throw
+      const { main } = await import('./index');
+      await expect(main()).rejects.toThrow('No doc site provided');
+    });
+
+    it('should handle server connection errors', async () => {
+      // Mock process.argv
+      process.argv = ['node', 'index.js', 'https://example.com'];
+
+      // Mock server that throws on connect
+      const mockServer = {
+        connect: jest.fn().mockRejectedValue(new Error('Connection failed'))
+      };
+      const mockTransport = {};
+      
+      mockCreateServer.mockReturnValue(mockServer as any);
+      mockStdioServerTransport.mockReturnValue(mockTransport as any);
+
+      // Import and expect main to throw
+      const { main } = await import('./index');
+      await expect(main()).rejects.toThrow('Connection failed');
+    });
   });
 });

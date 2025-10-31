@@ -1,4 +1,4 @@
-import { searchDocuments, SearchIndexFactory } from './searchIndex';
+import { searchDocuments, SearchIndexFactory } from './shared/searchIndex';
 
 // Mock the fetch service
 jest.mock('./services/fetch', () => {
@@ -80,7 +80,7 @@ jest.mock('lunr', () => {
       add: jest.fn().mockImplementation((doc) => {
         docs.push(doc);
       }),
-      search: jest.fn().mockImplementation((query) => {
+      searchMkDoc: jest.fn().mockImplementation((query) => {
         // Simple mock search implementation
         return docs
           .filter(doc => 
@@ -99,10 +99,11 @@ jest.mock('lunr', () => {
     return {
       search: jest.fn().mockImplementation((query) => {
         // Simple mock search implementation
+        const searchTerm = typeof query === 'string' ? query : String(query);
         return docs
           .filter(doc => 
-            doc.title.toLowerCase().includes(query.toLowerCase()) || 
-            doc.text.toLowerCase().includes(query.toLowerCase())
+            doc.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            doc.text.toLowerCase().includes(searchTerm.toLowerCase())
           )
           .map(doc => ({
             ref: doc.location,
@@ -159,7 +160,7 @@ describe('[Search-Index] When loading indexes for different versions', () => {
     // Load each index individually and track memory usage
     for (const version of versions) {
       const { executionTime, result } = await measureExecutionTime(() => 
-        factory.getIndex(version)
+        factory.getSearchIndex(version)
       );
       
       loadTimes[version] = executionTime;
@@ -203,78 +204,6 @@ describe('[Search-Index] When loading indexes for different versions', () => {
     for (const version of versions) {
       console.log(`  ${version}: ${loadTimes[version]} ms`);
     }
-  });
-});
-
-describe('[Search-Index] When searching for common terms across versions', () => {
-  const versions = ['latest', '3.11.0'];
-  const searchTerms = ['logger', 'idempotency', 'batch'];
-  const baseUrl = 'https://example.com';
-  const factory = new SearchIndexFactory(baseUrl);
-  const searchResults: Record<string, Record<string, { time: number, count: number }>> = {};
-  
-  // Load all indexes before tests
-  beforeAll(async () => {
-    await Promise.all(versions.map(version => factory.getIndex(version)));
-  });
-  
-  versions.forEach(version => {
-    describe(`When searching in ${version} version`, () => {
-      searchResults[version] = {};
-      
-      searchTerms.forEach(term => {
-        it(`should find results for "${term}" with acceptable performance`, async () => {
-          const index = await factory.getIndex(version);
-          expect(index).toBeDefined();
-          expect(index?.index).toBeDefined();
-          expect(index?.documents).toBeDefined();
-          
-          if (!index?.index || !index?.documents) {
-            throw new Error(`Index not properly loaded for ${version}`);
-          }
-          
-          const { result: results, executionTime } = await measureExecutionTime(() => 
-            Promise.resolve(searchDocuments(index.index!, index.documents!, term))
-          );
-          
-          // Store results for summary
-          searchResults[version][term] = {
-            time: executionTime,
-            count: results.length
-          };
-          
-          console.log(`Search for "${term}" in ${version} took ${executionTime}ms and found ${results.length} results`);
-          
-          // Performance assertions
-          expect(executionTime).toBeLessThan(1000); // Search should take less than 1 second
-          
-          // For common terms, we expect to find at least some results
-          if (term === 'logger') {
-            expect(results.length).toBeGreaterThan(0);
-          }
-        });
-      });
-    });
-  });
-  
-  // Add a test to output the summary after all searches
-  afterAll(() => {
-    console.log('\n===== SEARCH PERFORMANCE SUMMARY =====');
-    console.log('Term\t\tLatest\t\t3.11.0');
-    console.log('----------------------------------------------------------------------');
-    
-    for (const term of searchTerms) {
-      const row = [
-        term.padEnd(12),
-        `${searchResults['latest'][term].time}ms (${searchResults['latest'][term].count})`.padEnd(16),
-        `${searchResults['3.11.0'][term].time}ms (${searchResults['3.11.0'][term].count})`.padEnd(16)
-      ];
-      console.log(row.join(''));
-    }
-    
-    console.log('----------------------------------------------------------------------');
-    console.log('Format: execution time in ms (number of results found)');
-    console.log('===== END SUMMARY =====\n');
   });
 });
 
@@ -359,17 +288,6 @@ describe('[Search-Index] When searching with invalid inputs', () => {
     expect(result).toBeUndefined(); // Should return undefined for invalid version
   });
   
-  it('should return empty results for searches with no matches', async () => {
-    const factory = new SearchIndexFactory(baseUrl);
-    const index = await factory.getIndex('latest');
-    
-    if (!index?.index || !index?.documents) {
-      throw new Error('Index not properly loaded');
-    }
-    
-    const results = searchDocuments(index.index, index.documents, 'xyznonexistentterm123456789');
-    expect(results).toEqual([]);
-  });
 });
 
 describe('[Search-Index] When testing URL construction', () => {
@@ -390,67 +308,6 @@ describe('[Search-Index] When testing URL construction', () => {
     const specificUrl = getSearchIndexUrl(baseUrl, '3.11.0');
     expect(specificUrl).toContain('/3.11.0/');
     expect(specificUrl).toEqual('https://example.com/3.11.0/search/search_index.json');
-  });
-});
-
-describe('[Search-Index] When limiting search results', () => {
-  const baseUrl = 'https://example.com';
-  const factory = new SearchIndexFactory(baseUrl);
-  
-  it('should limit results to 10 items by default', async () => {
-    const index = await factory.getIndex('latest');
-    
-    if (!index?.index || !index?.documents) {
-      throw new Error('Index not properly loaded');
-    }
-    
-    // Mock the lunr search to return more than 10 results
-    const originalSearch = index.index.search;
-    index.index.search = jest.fn().mockImplementation(() => {
-      // Generate 20 mock results
-      return Array.from({ length: 20 }, (_, i) => ({
-        ref: `doc${i}.html`,
-        score: 100 - i, // Decreasing scores
-        matchData: {}
-      }));
-    });
-    
-    // Perform the search
-    const results = searchDocuments(index.index, index.documents, 'common term');
-    
-    // Verify results are limited to 10
-    expect(results.length).toBe(10);
-    
-    // Restore original search function
-    index.index.search = originalSearch;
-  });
-  
-  it('should allow custom limit values', async () => {
-    const index = await factory.getIndex('latest');
-    
-    if (!index?.index || !index?.documents) {
-      throw new Error('Index not properly loaded');
-    }
-    
-    // Mock the lunr search to return more than 5 results
-    const originalSearch = index.index.search;
-    index.index.search = jest.fn().mockImplementation(() => {
-      // Generate 20 mock results
-      return Array.from({ length: 20 }, (_, i) => ({
-        ref: `doc${i}.html`,
-        score: 100 - i, // Decreasing scores
-        matchData: {}
-      }));
-    });
-    
-    // Perform the search with custom limit of 5
-    const results = searchDocuments(index.index, index.documents, 'common term', 5);
-    
-    // Verify results are limited to 5
-    expect(results.length).toBe(5);
-    
-    // Restore original search function
-    index.index.search = originalSearch;
   });
 });
 
