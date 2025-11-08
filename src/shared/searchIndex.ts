@@ -86,24 +86,48 @@ function mkDocsToLunrIndex(mkDocsIndex: MkDocsSearchIndex): { index: lunr.Index,
     // Create a document map for quick lookups - with minimal data
     const documents = new Map<string, any>();
     
-    // Add only essential document data to the map
+    // First pass: identify articles and create parent-child relationships
+    const articleMap = new Map<string, any>(); // Maps article path to article document
+    
+    // Add document data to the map with parent/child relationships
     for (const doc of mkDocsIndex.docs) {
-        documents.set(doc.location, {
+        const [articlePath] = doc.location.split('#');
+        const isSection = doc.location.includes('#');
+        
+        const docData = {
             title: doc.title,
             location: doc.location,
             // Store a truncated preview of text instead of the full content
             preview: doc.text ? doc.text.substring(0, 200) + (doc.text.length > 200 ? '...' : '') : '',
             // Optionally store tags if needed
-            tags: doc.tags || []
-        });
+            tags: doc.tags || [],
+            // Add parent/child relationship info
+            isSection,
+            articlePath,
+            parent: undefined as any // Will be set for sections
+        };
+        
+        if (isSection) {
+            // This is a section - link it to its parent article
+            const parentArticle = articleMap.get(articlePath);
+            if (parentArticle) {
+                docData.parent = parentArticle;
+            }
+        } else {
+            // This is an article - store it for sections to reference
+            articleMap.set(articlePath, docData);
+        }
+        
+        documents.set(doc.location, docData);
     }
     
     // Create a new lunr index
     const index = lunr(function() {
         // Configure the index based on mkdocs config
         this.ref('location');
-        this.field('title', { boost: 10 });
-        this.field('text');
+        this.field('title', { boost: 1000 });
+        this.field('text', { boost: 1 });
+        this.field('tags', { boost: 1000000 });
         
         // Add documents to the index
         for (const doc of mkDocsIndex.docs) {
@@ -214,11 +238,56 @@ export async function searchDocuments(baseUrl: string, query: string, version = 
         };
     });
 
+    // Group results by parent article (like mkdocs-material)
+    const groups = new Map<string, any[]>();
+    
+    for (const result of mappedResults) {
+        const doc = result.document;
+        if (!doc) continue;
+        
+        // Determine the group key (article path)
+        const groupKey = doc.isSection ? doc.articlePath : doc.location;
+        
+        // Get or create the group
+        if (!groups.has(groupKey)) {
+            groups.set(groupKey, []);
+        }
+        
+        groups.get(groupKey)!.push(result);
+    }
+    
+    // Ensure each group has its main article (like mkdocs-material does)
+    for (const [articlePath, groupResults] of groups) {
+        const hasArticle = groupResults.some(result => result.document.location === articlePath);
+        
+        if (!hasArticle) {
+            // Find the article document and add it with score 0
+            const articleDoc = searchIndex.documents!.get(articlePath);
+            if (articleDoc) {
+                groupResults.push({
+                    ref: articlePath,
+                    score: 0,
+                    matchData: { metadata: {} },
+                    document: articleDoc
+                });
+            }
+        }
+        
+        // Sort results within each group by score (highest first)
+        groupResults.sort((a, b) => b.score - a.score);
+    }
+    
+    // Convert groups back to flat array, sorted by best score in each group
+    const groupedResults = Array.from(groups.values())
+        .sort((a, b) => b[0].score - a[0].score) // Sort groups by best result in group
+        .flat(); // Flatten back to single array
+
     return {
         query,
         version,
-        results: mappedResults,
-        total: mappedResults.length
+        results: groupedResults,
+        total: groupedResults.length,
+        groups: groups.size // Add group count for debugging
     };
 }
 
