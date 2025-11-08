@@ -1,0 +1,112 @@
+import { fetchMkDoc } from './tool';
+import { fetchDocPage } from '../../fetch-doc';
+import { buildResponse } from '../shared/buildResponse';
+
+import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+
+// Mock dependencies
+jest.mock('../../fetch-doc');
+jest.mock('../shared/buildResponse');
+jest.mock('../../services/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    error: jest.fn()
+  }
+}));
+
+const mockFetchDocPage = fetchDocPage as jest.MockedFunction<typeof fetchDocPage>;
+const mockBuildResponse = buildResponse as jest.MockedFunction<typeof buildResponse>;
+
+describe('[FetchMkDoc Tool]', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockBuildResponse.mockImplementation(({ content }) => ({ content } as any));
+  });
+
+  describe('When fetching successfully', () => {
+    it('should return the fetched document content', async () => {
+      const mockResult = {
+        title: 'Logger Documentation',
+        content: '# Logger\n\nThis is the logger documentation...',
+        url: 'https://docs.example.com/latest/core/logger/',
+        version: 'latest'
+      };
+
+      mockFetchDocPage.mockResolvedValue(mockResult);
+
+      const result = await fetchMkDoc({
+        url: 'https://docs.example.com/latest/core/logger/'
+      });
+
+      expect(mockFetchDocPage).toHaveBeenCalledWith(
+        'https://docs.example.com/latest/core/logger/'
+      );
+
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: mockResult
+      });
+    });
+
+    it('should handle different URL formats', async () => {
+      const mockResult = {
+        title: 'Configuration',
+        content: '# Configuration\n\nConfigure your logger...',
+        url: 'https://docs.example.com/v2.0/advanced/config/',
+        version: 'v2.0'
+      };
+
+      mockFetchDocPage.mockResolvedValue(mockResult);
+
+      await fetchMkDoc({
+        url: 'https://docs.example.com/v2.0/advanced/config/'
+      });
+
+      expect(mockFetchDocPage).toHaveBeenCalledWith(
+        'https://docs.example.com/v2.0/advanced/config/'
+      );
+    });
+  });
+
+  describe('When fetch fails', () => {
+    it('should handle fetch errors gracefully', async () => {
+      const error = new Error('Page not found');
+      mockFetchDocPage.mockRejectedValue(error);
+
+      await fetchMkDoc({
+        url: 'https://docs.example.com/nonexistent/'
+      });
+
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: 'Fetch failed: Page not found',
+        isError: true
+      });
+    });
+
+    it('should handle non-Error exceptions', async () => {
+      mockFetchDocPage.mockRejectedValue('Network timeout');
+
+      await fetchMkDoc({
+        url: 'https://docs.example.com/timeout/'
+      });
+
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: 'Fetch failed: Network timeout',
+        isError: true
+      });
+    });
+
+    it('should handle invalid URLs', async () => {
+      const error = new Error('Invalid URL format');
+      mockFetchDocPage.mockRejectedValue(error);
+
+      await fetchMkDoc({
+        url: 'invalid://url'
+      });
+
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: 'Fetch failed: Invalid URL format',
+        isError: true
+      });
+    });
+  });
+});

@@ -1,4 +1,5 @@
 import { NodeHtmlMarkdownConverter } from './nodeHtmlMarkdownConverter';
+import { AIOptimizedMarkdownConverter } from './aiOptimizedConverter';
 import { HtmlToMarkdownConverter } from './types';
 
 /**
@@ -6,7 +7,7 @@ import { HtmlToMarkdownConverter } from './types';
  */
 export enum ConverterType {
   NODE_HTML_MARKDOWN = 'node-html-markdown',
-  // Add other converters as needed in the future
+  AI_OPTIMIZED = 'ai-optimized',
 }
 
 /**
@@ -18,13 +19,21 @@ export class ConverterFactory {
    * @param type The type of converter to create
    * @returns An instance of HtmlToMarkdownConverter
    */
-  static createConverter(type: ConverterType = ConverterType.NODE_HTML_MARKDOWN): HtmlToMarkdownConverter {
+  static createConverter(type: ConverterType = ConverterType.AI_OPTIMIZED): HtmlToMarkdownConverter {
     switch (type) {
       case ConverterType.NODE_HTML_MARKDOWN:
         return new NodeHtmlMarkdownConverter();
-      // Add cases for other converters as they are implemented
+      case ConverterType.AI_OPTIMIZED:
+        return new AIOptimizedMarkdownConverter();
       default:
-        return new NodeHtmlMarkdownConverter();
+        return new AIOptimizedMarkdownConverter();
     }
+  }
+  
+  /**
+   * Get the default converter optimized for AI coding assistants
+   */
+  static createDefault(): HtmlToMarkdownConverter {
+    return this.createConverter(ConverterType.AI_OPTIMIZED);
   }
 }
