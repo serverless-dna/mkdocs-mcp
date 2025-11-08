@@ -10,6 +10,7 @@ import {
   schema as searchMkDocSchema,
   tool as searchMkDoc,
 } from './tools/searchMkDoc/index';
+import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from './constants';
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
@@ -21,8 +22,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const createServer = (docsUrl: string, searchDoc: string) => {
   const server = new Server(
     {
-      name: "mkdocs-mcp-server",
-      version: "0.1.0",
+      name: MCP_SERVER_NAME,
+      version: MCP_SERVER_VERSION,
     },
     {
       capabilities: {
@@ -36,12 +37,12 @@ export const createServer = (docsUrl: string, searchDoc: string) => {
       tools: [
         {
           name: searchMkDocName,
-          description: `${searchMkDocDescription}: ${searchDoc}`,
+          description: `${searchMkDocDescription} for ${searchDoc}. Results are filtered by confidence threshold for relevance.`,
           inputSchema: zodToJsonSchema(searchMkDocSchema),
         },
         {
           name: fetchMkDocName,
-          description: fetchMkDocDescription,
+          description: `${fetchMkDocDescription}. Fetches and converts documentation pages to markdown format.`,
           inputSchema: zodToJsonSchema(fetchMkDocSchema),
         },
       ],

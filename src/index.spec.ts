@@ -1,4 +1,8 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { logger } from './services/logger';
+import { createServer } from './server';
+
+import { afterEach,beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 // Mock the logger
 jest.mock('./services/logger', () => ({
@@ -10,28 +14,7 @@ jest.mock('./services/logger', () => ({
   }
 }));
 
-// Mock the fetch-doc module
-jest.mock('./fetch-doc', () => ({
-  fetchDocPage: jest.fn()
-}));
 
-// Mock the shared searchIndex module
-jest.mock('./shared/searchIndex', () => {
-  const mockResolveVersion = jest.fn();
-  const mockGetIndex = jest.fn();
-  
-  const mockSearchIndexFactory = jest.fn().mockImplementation(() => ({
-    resolveVersion: mockResolveVersion,
-    getIndex: mockGetIndex
-  }));
-
-  const mockSearchDocuments = jest.fn();
-
-  return {
-    SearchIndexFactory: mockSearchIndexFactory,
-    searchDocuments: mockSearchDocuments
-  };
-});
 
 // Mock the server module
 jest.mock('./server', () => ({
@@ -43,15 +26,7 @@ jest.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
   StdioServerTransport: jest.fn()
 }));
 
-import { logger } from './services/logger';
-import { fetchDocPage } from './fetch-doc';
-import { SearchIndexFactory, searchDocuments } from './shared/searchIndex';
-import { createServer } from './server';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-
 const mockLogger = logger as jest.Mocked<typeof logger>;
-const mockFetchDocPage = fetchDocPage as jest.MockedFunction<typeof fetchDocPage>;
-const mockSearchDocuments = searchDocuments as jest.MockedFunction<typeof searchDocuments>;
 const mockCreateServer = createServer as jest.MockedFunction<typeof createServer>;
 const mockStdioServerTransport = StdioServerTransport as jest.MockedFunction<typeof StdioServerTransport>;
 
