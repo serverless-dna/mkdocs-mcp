@@ -20,13 +20,30 @@ export const searchMkDoc = async (props: {
     // Filter results by confidence threshold and format for better presentation
     const filteredResults = searchResults.results
       .filter((result: any) => result.score >= SEARCH_CONFIDENCE_THRESHOLD)
-      .map((result: any) => ({
-        title: result.document?.title || result.ref,
-        url: `${docsUrl}/${version}/${result.ref}`,
-        score: result.score,
-        preview: result.document?.preview || '',
-        location: result.ref
-      }));
+      .map((result: any) => {
+        const doc = result.document;
+        const baseResult = {
+          title: doc?.title || result.ref,
+          url: `${docsUrl}/${version}/${result.ref}`,
+          score: result.score,
+          preview: doc?.preview || '',
+          location: result.ref
+        };
+
+        // Add parent article context for sections
+        if (doc?.isSection && doc?.parent) {
+          return {
+            ...baseResult,
+            parentArticle: {
+              title: doc.parent.title,
+              location: doc.parent.location,
+              url: `${docsUrl}/${version}/${doc.parent.location}`
+            }
+          };
+        }
+
+        return baseResult;
+      });
 
     logger.debug(
       `Search results with confidence >= ${SEARCH_CONFIDENCE_THRESHOLD} found: ${filteredResults.length}`
