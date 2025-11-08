@@ -67,6 +67,26 @@ Align mkdocs-mcp search experience with mkdocs-material's backend search behavio
 
 **File:** `src/tools/searchMkDoc/tool.ts` - result formatting
 
+### ✅ 6. Add Search Suggestions ⭐
+**Completed:** Return suggested terms for partial matches
+- Wildcard search on titles with trailing wildcard ✅
+- Extract matching terms from best results ✅
+- Return unique suggestions (max 5) ✅
+- Only suggest when few results found (< 3) ✅
+- Graceful error handling ✅
+
+**Example Output:**
+```json
+{
+  "query": "loger",
+  "results": [],
+  "total": 0,
+  "suggestions": ["logger", "logging", "log"]
+}
+```
+
+**File:** `src/shared/searchIndex.ts` - `searchDocuments()` function
+
 ## Medium Priority Tasks
 
 ### 5. Improve Result Scoring
@@ -102,10 +122,10 @@ Align mkdocs-mcp search experience with mkdocs-material's backend search behavio
 
 ## 🎉 Status Summary
 **High Priority Tasks: 3/3 COMPLETED ✅**
-**Bonus Enhancements: 2/2 COMPLETED ✅**
-**Medium Priority Tasks: 0/2 remaining**
+**Bonus Enhancements: 3/3 COMPLETED ✅**
+**Medium Priority Tasks: 1/2 remaining**
 
-**Overall Progress: 5/6 tasks completed (83%)**
+**Overall Progress: 6/7 tasks completed (86%)**
 
 ## 🚀 Impact
 - **Significantly improved search relevance** (1000x title, 1000000x tag boosts)

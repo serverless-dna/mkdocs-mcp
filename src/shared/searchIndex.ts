@@ -282,12 +282,60 @@ export async function searchDocuments(baseUrl: string, query: string, version = 
         .sort((a, b) => b[0].score - a[0].score) // Sort groups by best result in group
         .flat(); // Flatten back to single array
 
+    // Generate search suggestions (like mkdocs-material)
+    let suggestions: string[] = [];
+    
+    // Only generate suggestions if we have few or no results
+    if (groupedResults.length < 3) {
+        try {
+            // Use wildcard search on titles to find similar terms
+            const suggestionResults = searchIndex.index.query(builder => {
+                // Split query into terms and add wildcard to each
+                const terms = query.toLowerCase().split(/\s+/).filter(term => term.length > 1);
+                
+                for (const term of terms) {
+                    builder.term(term, {
+                        fields: ['title'],
+                        wildcard: lunr.Query.wildcard.TRAILING,
+                        boost: 10
+                    });
+                    
+                    // Also try without wildcard for exact matches
+                    builder.term(term, {
+                        fields: ['title', 'text'],
+                        boost: 1
+                    });
+                }
+            });
+
+            // Extract unique terms from the metadata of top results
+            const suggestionTerms = new Set<string>();
+            
+            for (const result of suggestionResults.slice(0, 5)) {
+                const metadata = result.matchData.metadata;
+                for (const term of Object.keys(metadata)) {
+                    // Only suggest terms that are different from the original query
+                    const cleanTerm = term.toLowerCase();
+                    if (cleanTerm.length > 2 && !query.toLowerCase().includes(cleanTerm)) {
+                        suggestionTerms.add(term);
+                    }
+                }
+            }
+            
+            suggestions = Array.from(suggestionTerms).slice(0, 5); // Limit to 5 suggestions
+        } catch (error) {
+            // If suggestion generation fails, continue without suggestions
+            logger.debug('Failed to generate search suggestions', { error: error instanceof Error ? error.message : String(error) });
+        }
+    }
+
     return {
         query,
         version,
         results: groupedResults,
         total: groupedResults.length,
-        groups: groups.size // Add group count for debugging
+        groups: groups.size, // Add group count for debugging
+        ...(suggestions.length > 0 && { suggestions }) // Only include if we have suggestions
     };
 }
 
