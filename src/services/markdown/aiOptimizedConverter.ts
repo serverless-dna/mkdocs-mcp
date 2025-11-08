@@ -1,12 +1,14 @@
 import * as cheerio from 'cheerio';
 import { HtmlToMarkdownConverter } from './types';
+import { ContentAnalyzer, ContentAnalysis } from './contentAnalyzer';
+import { SummaryGenerator } from './summaryGenerator';
 
 export interface CodeBlock {
   language: string;
   code: string;
   description?: string;
   isExample: boolean;
-  context?: string; // surrounding text for context
+  context?: string;
 }
 
 export interface UseCase {
@@ -18,10 +20,14 @@ export interface UseCase {
 export interface AIOptimizedContent {
   title: string;
   summary?: string;
+  technicalSummary?: string;
+  developerSummary?: string;
   contentType: 'tutorial' | 'api' | 'reference' | 'guide' | 'unknown';
   codeExamples: CodeBlock[];
   useCases: UseCase[];
   keyPoints: string[];
+  relatedConcepts: string[];
+  crossReferences: Array<{text: string; url: string; context: string}>;
   markdown: string;
 }
 
@@ -29,6 +35,13 @@ export interface AIOptimizedContent {
  * AI-optimized HTML to Markdown converter focused on developer content
  */
 export class AIOptimizedMarkdownConverter implements HtmlToMarkdownConverter {
+  private contentAnalyzer: ContentAnalyzer;
+  private summaryGenerator: SummaryGenerator;
+  
+  constructor() {
+    this.contentAnalyzer = new ContentAnalyzer();
+    this.summaryGenerator = new SummaryGenerator();
+  }
   
   convert(html: string): string {
     const optimized = this.convertToAIOptimized(html);
@@ -41,30 +54,42 @@ export class AIOptimizedMarkdownConverter implements HtmlToMarkdownConverter {
     // Remove noise elements that confuse AI
     this.removeNoiseElements($);
     
+    // Advanced content analysis
+    const analysis = this.contentAnalyzer.analyze($);
+    
     // Extract structured content
     const title = this.extractTitle($);
     const contentType = this.detectContentType($);
     const codeExamples = this.extractCodeBlocks($);
-    const useCases = this.extractUseCases($);
-    const keyPoints = this.extractKeyPoints($);
+    
+    // Generate multiple summary types
+    const summary = this.summaryGenerator.generate(analysis);
+    const technicalSummary = this.summaryGenerator.generateTechnicalSummary(analysis);
+    const developerSummary = this.summaryGenerator.generateDeveloperSummary(analysis);
     
     // Generate optimized markdown
     const markdown = this.generateOptimizedMarkdown($, {
       title,
       contentType,
       codeExamples,
-      useCases,
-      keyPoints
+      useCases: analysis.useCases,
+      keyPoints: analysis.keyPoints,
+      relatedConcepts: analysis.relatedConcepts,
+      crossReferences: analysis.crossReferences
     });
     
     return {
       title,
       contentType,
       codeExamples,
-      useCases,
-      keyPoints,
+      useCases: analysis.useCases,
+      keyPoints: analysis.keyPoints,
+      relatedConcepts: analysis.relatedConcepts,
+      crossReferences: analysis.crossReferences,
       markdown,
-      summary: this.generateSummary(keyPoints, useCases)
+      summary,
+      technicalSummary,
+      developerSummary
     };
   }
   
@@ -301,6 +326,13 @@ export class AIOptimizedMarkdownConverter implements HtmlToMarkdownConverter {
       markdown += '\n';
     }
     
+    // Add related concepts
+    if (content.relatedConcepts && content.relatedConcepts.length > 0) {
+      markdown += `## Related Concepts\n\n`;
+      markdown += content.relatedConcepts.map(concept => `- ${concept}`).join('\n');
+      markdown += '\n\n';
+    }
+    
     // Add use cases
     if (content.useCases && content.useCases.length > 0) {
       markdown += `## Use Cases\n\n`;
@@ -330,6 +362,15 @@ export class AIOptimizedMarkdownConverter implements HtmlToMarkdownConverter {
           }
           markdown += `\`\`\`${block.language}\n${block.code}\n\`\`\`\n\n`;
         });
+    }
+    
+    // Add cross-references
+    if (content.crossReferences && content.crossReferences.length > 0) {
+      markdown += `## See Also\n\n`;
+      content.crossReferences.slice(0, 5).forEach(ref => {
+        markdown += `- [${ref.text}](${ref.url})\n`;
+      });
+      markdown += '\n';
     }
     
     return markdown;
