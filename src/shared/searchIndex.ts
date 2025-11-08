@@ -229,11 +229,53 @@ export async function searchDocuments(baseUrl: string, query: string, version = 
     // Perform the search
     const results = searchIndex.index.search(query);
     
-    // Map results to include document data
+    // Map results to include document data and apply advanced scoring
+    const queryStr = String(query); // Ensure query is a string
+    const queryTerms = queryStr.toLowerCase().split(/\s+/).filter(term => term.length > 1);
+    
     const mappedResults = results.map(result => {
         const doc = searchIndex.documents!.get(result.ref);
+        let enhancedScore = result.score;
+        
+        if (doc) {
+            // Post-query boosts (like mkdocs-material)
+            let boost = 1;
+            
+            // 1. Title match boost - if query terms appear in title
+            const titleLower = doc.title.toLowerCase();
+            const titleMatches = queryTerms.filter(term => titleLower.includes(term)).length;
+            if (titleMatches > 0) {
+                boost += titleMatches * 0.5; // 50% boost per matching term in title
+            }
+            
+            // 2. Exact title match gets major boost
+            if (titleLower === queryStr.toLowerCase()) {
+                boost += 2.0; // 200% boost for exact title match
+            }
+            
+            // 3. Article vs section boost - articles are slightly preferred
+            if (!doc.isSection) {
+                boost += 0.2; // 20% boost for articles over sections
+            }
+            
+            // 4. Tag match boost - if query appears in tags
+            if (doc.tags && doc.tags.length > 0) {
+                const tagMatches = queryTerms.filter(term => 
+                    doc.tags.some((tag: string) => tag.toLowerCase().includes(term))
+                ).length;
+                if (tagMatches > 0) {
+                    boost += tagMatches * 0.3; // 30% boost per matching tag
+                }
+            }
+            
+            // Apply the boost
+            enhancedScore = result.score * boost;
+        }
+        
         return {
             ...result,
+            score: enhancedScore, // Use enhanced score
+            originalScore: result.score, // Keep original for debugging
             document: doc
         };
     });
