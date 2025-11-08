@@ -1,55 +1,57 @@
-import {
-  LogFormatter,
-  Logger as PowertoolsLogger,
-  LogItem
-} from '@aws-lambda-powertools/logger';
-import type {
-  LogAttributes,
-  UnformattedAttributes,
-} from '@aws-lambda-powertools/logger/types';
+type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
-// Store original console methods
-const originalConsole = {
-  log: console.log,
-  info: console.info,
-  warn: console.warn,
-  error: console.error,
-  debug: console.debug,
-};
+class SimpleLogger {
+  private logLevel: LogLevel;
+  private serviceName: string;
 
-// Override console methods to write to stderr
-console.log = (...args: any[]) => process.stderr.write(args.join(' ') + '\n');
-console.info = (...args: any[]) => process.stderr.write(args.join(' ') + '\n');
-console.warn = (...args: any[]) => process.stderr.write(args.join(' ') + '\n');
-console.debug = (...args: any[]) => process.stderr.write(args.join(' ') + '\n');
+  constructor(serviceName: string = 'mkdocs-mcp', logLevel: LogLevel = 'INFO') {
+    this.serviceName = serviceName;
+    this.logLevel = (process.env.LOG_LEVEL as LogLevel) || logLevel;
+  }
 
-class CustomLogFormatter extends LogFormatter {
-  formatAttributes(
-    attributes: UnformattedAttributes,
-    additionalLogAttributes: LogAttributes
-  ): LogItem {
-    return new LogItem({
-      attributes: {
-        timestamp: attributes.timestamp,
-        level: attributes.level,
-        message: attributes.message,
-      },
-    }).addAttributes(additionalLogAttributes);
+  private shouldLog(level: LogLevel): boolean {
+    const levels: Record<LogLevel, number> = {
+      DEBUG: 0,
+      INFO: 1,
+      WARN: 2,
+      ERROR: 3
+    };
+    return levels[level] >= levels[this.logLevel];
+  }
+
+  private formatMessage(level: LogLevel, message: string, meta?: any): string {
+    const timestamp = new Date().toISOString();
+    const metaStr = meta ? ` ${JSON.stringify(meta)}` : '';
+    return `${timestamp} [${level}] ${this.serviceName}: ${message}${metaStr}`;
+  }
+
+  private writeToStderr(message: string): void {
+    process.stderr.write(message + '\n');
+  }
+
+  debug(message: string, meta?: any): void {
+    if (this.shouldLog('DEBUG')) {
+      this.writeToStderr(this.formatMessage('DEBUG', message, meta));
+    }
+  }
+
+  info(message: string, meta?: any): void {
+    if (this.shouldLog('INFO')) {
+      this.writeToStderr(this.formatMessage('INFO', message, meta));
+    }
+  }
+
+  warn(message: string, meta?: any): void {
+    if (this.shouldLog('WARN')) {
+      this.writeToStderr(this.formatMessage('WARN', message, meta));
+    }
+  }
+
+  error(message: string, meta?: any): void {
+    if (this.shouldLog('ERROR')) {
+      this.writeToStderr(this.formatMessage('ERROR', message, meta));
+    }
   }
 }
 
-// Create logger with stderr output
-const logger = new PowertoolsLogger({
-  logLevel: (process.env.LOG_LEVEL as any) || 'INFO',
-  serviceName: 'mkdocs-mcp',
-  logFormatter: new CustomLogFormatter(),
-});
-
-// Restore original console methods for other parts of the application
-console.log = originalConsole.log;
-console.info = originalConsole.info;
-console.warn = originalConsole.warn;
-console.error = originalConsole.error;
-console.debug = originalConsole.debug;
-
-export { logger };
+export const logger = new SimpleLogger();
