@@ -2,6 +2,8 @@ import { fetchService } from '../services/fetch';
 import { ContentType } from '../services/fetch/types';
 import { logger } from '../services/logger';
 
+import { buildVersionedUrl, detectVersioning } from './versionDetection';
+
 import lunr from 'lunr';
 
 // Define the structure of MkDocs search index
@@ -42,14 +44,14 @@ async function fetchAvailableVersions(baseUrl: string): Promise<Array<{title: st
 }
 
 // Function to get the search index URL for a version
-function getSearchIndexUrl(baseUrl: string, version = 'latest'): string {
-    return `${baseUrl}/${version}/search/search_index.json`;
+async function getSearchIndexUrl(baseUrl: string, version?: string): Promise<string> {
+    return await buildVersionedUrl(baseUrl, 'search/search_index.json', version);
 }
 
 // Function to fetch the search index for a version
-async function fetchSearchIndex(baseUrl: string, version = 'latest'): Promise<MkDocsSearchIndex | undefined> {
+async function fetchSearchIndex(baseUrl: string, version?: string): Promise<MkDocsSearchIndex | undefined> {
     try {
-        const url = getSearchIndexUrl(baseUrl, version);
+        const url = await getSearchIndexUrl(baseUrl, version);
         const response = await fetchService.fetch(url, {
             contentType: ContentType.WEB_PAGE,
             headers: {
@@ -64,7 +66,7 @@ async function fetchSearchIndex(baseUrl: string, version = 'latest'): Promise<Mk
         const indexData = await response.json();
         return indexData as MkDocsSearchIndex;
     } catch (error) {
-        logger.info(`Error fetching search index for ${version}: ${error}`);
+        logger.info(`Error fetching search index for ${version || 'default'}: ${error}`);
         return undefined;
     }
 }
@@ -183,14 +185,21 @@ export class SearchIndexFactory {
         return { valid: false, resolved: version, available: availableVersions };
     }
 
-    async getSearchIndex(version = 'latest'): Promise<SearchIndex | undefined> {
+    async getSearchIndex(version?: string): Promise<SearchIndex | undefined> {
+        // Detect if site uses versioning
+        const hasVersioning = await detectVersioning(this.baseUrl);
+        
+        // Determine the actual version to use
+        const actualVersion = hasVersioning ? (version || 'latest') : undefined;
+        const cacheKey = actualVersion || 'default';
+        
         // Check if we already have this index
-        if (this.indices.has(version)) {
-            return this.indices.get(version);
+        if (this.indices.has(cacheKey)) {
+            return this.indices.get(cacheKey);
         }
 
         // Fetch the search index
-        const mkDocsIndex = await fetchSearchIndex(this.baseUrl, version);
+        const mkDocsIndex = await fetchSearchIndex(this.baseUrl, actualVersion);
         if (!mkDocsIndex) {
             return undefined;
         }
@@ -200,14 +209,14 @@ export class SearchIndexFactory {
 
         // Create our search index
         const searchIndex: SearchIndex = {
-            version,
-            url: getSearchIndexUrl(this.baseUrl, version),
+            version: actualVersion || 'default',
+            url: await getSearchIndexUrl(this.baseUrl, actualVersion),
             index,
             documents
         };
 
         // Cache it
-        this.indices.set(version, searchIndex);
+        this.indices.set(cacheKey, searchIndex);
 
         return searchIndex;
     }
@@ -218,12 +227,12 @@ export class SearchIndexFactory {
 }
 
 // Function to search documents
-export async function searchDocuments(baseUrl: string, query: string, version = 'latest'): Promise<any> {
+export async function searchDocuments(baseUrl: string, query: string, version?: string): Promise<any> {
     const factory = new SearchIndexFactory(baseUrl);
     const searchIndex = await factory.getSearchIndex(version);
     
     if (!searchIndex || !searchIndex.index || !searchIndex.documents) {
-        throw new Error(`No search index available for version: ${version}`);
+        throw new Error(`No search index available${version ? ` for version: ${version}` : ''}`);
     }
 
     // Perform the search

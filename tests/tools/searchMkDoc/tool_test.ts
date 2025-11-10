@@ -8,6 +8,15 @@ import { beforeEach,describe, expect, it, jest } from '@jest/globals';
 // Mock dependencies
 jest.mock('../../../src/shared/searchIndex');
 jest.mock('../../../src/tools/shared/buildResponse');
+jest.mock('../../../src/shared/versionDetection', () => ({
+  buildVersionedUrl: jest.fn((baseUrl, path, version) => {
+    if (version) {
+      return Promise.resolve(`${baseUrl}/${version}/${path}`);
+    }
+    return Promise.resolve(`${baseUrl}/${path}`);
+  }),
+  detectVersioning: jest.fn(() => Promise.resolve(true))
+}));
 jest.mock('../../../src/services/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -126,7 +135,7 @@ describe('[SearchMkDoc Tool]', () => {
       expect(mockSearchDocuments).toHaveBeenCalledWith(
         'https://docs.example.com',
         'test',
-        'latest'
+        undefined
       );
     });
 
@@ -152,12 +161,12 @@ describe('[SearchMkDoc Tool]', () => {
       expect(mockBuildResponse).toHaveBeenCalledWith({
         content: {
           query: 'test',
-          version: 'latest',
+          version: undefined,
           total: 1,
           results: [
             {
               title: 'some/page/',
-              url: 'https://docs.example.com/latest/some/page/',
+              url: 'https://docs.example.com/some/page/',
               score: 0.8,
               preview: '',
               location: 'some/page/'
