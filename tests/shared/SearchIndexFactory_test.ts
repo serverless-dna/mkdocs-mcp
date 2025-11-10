@@ -1,5 +1,5 @@
-import { EnhancedSearchIndexFactory } from '../../src/shared/EnhancedSearchIndexFactory';
 import { VersionNotFoundError } from '../../src/shared/errors/VersionErrors';
+import { SearchIndexFactory } from '../../src/shared/SearchIndexFactory';
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
@@ -19,8 +19,8 @@ jest.mock('../../src/services/logger', () => ({
   }
 }));
 
-describe('[EnhancedSearchIndexFactory]', () => {
-  let factory: EnhancedSearchIndexFactory;
+describe('[SearchIndexFactory]', () => {
+  let factory: SearchIndexFactory;
   let mockFetch: jest.MockedFunction<any>;
 
   beforeEach(() => {
@@ -34,7 +34,7 @@ describe('[EnhancedSearchIndexFactory]', () => {
       }
     }));
     
-    factory = new EnhancedSearchIndexFactory('https://docs.example.com');
+    factory = new SearchIndexFactory('https://docs.example.com');
   });
 
   describe('Version Error Handling', () => {

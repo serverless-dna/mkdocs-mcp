@@ -27,60 +27,35 @@ interface MkDocsSearchIndex {
 }
 
 /**
- * Enhanced SearchIndexFactory with robust version-aware search indexing
+ * SearchIndexFactory with robust version-aware search indexing
  */
-export class EnhancedSearchIndexFactory {
+export class SearchIndexFactory {
   private readonly versionManager: VersionManager;
   private readonly indexCache: IndexCache<SearchIndex>;
   private readonly indexLoader: IndexLoader<SearchIndex>;
   private readonly baseUrl: string;
-  private hasVersioning: boolean | null = null;
-  private initializationPromise: Promise<void> | null = null;
+  private readonly hasVersioning: boolean;
+  private readonly availableVersions: any[];
 
-  constructor(baseUrl: string, options: SearchIndexOptions = {}) {
+  constructor(baseUrl: string, options: SearchIndexOptions & { hasVersioning?: boolean; availableVersions?: any[] } = {}) {
     this.baseUrl = baseUrl;
+    this.hasVersioning = options.hasVersioning ?? false;
+    this.availableVersions = options.availableVersions ?? [];
+    
     this.versionManager = new VersionManager(baseUrl, options.versionOptions);
     this.indexCache = new IndexCache<SearchIndex>(options.cacheOptions);
     this.indexLoader = new IndexLoader<SearchIndex>(baseUrl, this.versionManager);
 
-    logger.debug(`Enhanced SearchIndexFactory initialized for ${baseUrl}`);
+    logger.debug(`SearchIndexFactory initialized for ${baseUrl} (versioned: ${this.hasVersioning})`);
   }
 
-  /**
-   * Initialize the factory by detecting versioning upfront
-   */
-  private async initialize(): Promise<void> {
-    if (this.hasVersioning !== null) {
-      return; // Already initialized
-    }
 
-    try {
-      this.hasVersioning = await this.versionManager.detectVersioning();
-      logger.debug(`Site versioning detected: ${this.hasVersioning ? 'enabled' : 'disabled'} for ${this.baseUrl}`);
-    } catch (error) {
-      logger.warn(`Failed to detect versioning for ${this.baseUrl}, assuming non-versioned:`, error);
-      this.hasVersioning = false;
-    }
-  }
-
-  /**
-   * Ensure initialization is complete
-   */
-  private async ensureInitialized(): Promise<void> {
-    if (this.initializationPromise === null) {
-      this.initializationPromise = this.initialize();
-    }
-    await this.initializationPromise;
-  }
 
   /**
    * Get a search index for the specified version
    */
   async getSearchIndex(version?: string): Promise<SearchIndex | undefined> {
     try {
-      // Ensure initialization is complete
-      await this.ensureInitialized();
-
       // Handle non-versioned sites
       if (!this.hasVersioning) {
         if (version && version !== 'latest') {
@@ -116,8 +91,36 @@ export class EnhancedSearchIndexFactory {
       return cachedIndex;
     }
 
-    // Load the index directly without version resolution
-    const searchIndex = await this.loadSearchIndexDirect('search/search_index.json', 'default');
+    // Try multiple possible search index locations for non-versioned sites
+    const possiblePaths = [
+      'search/search_index.json',
+      'search_index.json',
+      'assets/javascripts/search_index.json',
+      'js/search_index.json'
+    ];
+
+    let searchIndex: SearchIndex | undefined;
+    let lastError: Error | undefined;
+
+    for (const path of possiblePaths) {
+      try {
+        const fullUrl = `${this.baseUrl}/${path}`;
+        logger.info(`🔍 Trying to load search index from: ${fullUrl}`);
+        searchIndex = await this.loadSearchIndexDirect(path, 'default');
+        logger.info(`✅ Successfully loaded search index from: ${fullUrl}`);
+        break;
+      } catch (error) {
+        lastError = error as Error;
+        const fullUrl = `${this.baseUrl}/${path}`;
+        logger.info(`❌ Failed to load search index from ${fullUrl}: ${error}`);
+        continue;
+      }
+    }
+
+    if (!searchIndex) {
+      logger.error(`Failed to load search index from any location for ${this.baseUrl}. Last error:`, lastError);
+      throw lastError || new Error('No search index found at any expected location');
+    }
 
     // Cache the loaded index
     this.indexCache.set(cacheKey, searchIndex);
@@ -236,11 +239,10 @@ export class EnhancedSearchIndexFactory {
    * Load a search index directly from a URL (for both versioned and non-versioned sites)
    */
   private async loadSearchIndexDirect(indexPath: string, version: string, isDefault: boolean = true): Promise<SearchIndex> {
-    logger.debug(`Loading search index from: ${indexPath}`);
-    
     try {
       // Build the full URL
       const indexUrl = indexPath.startsWith('http') ? indexPath : `${this.baseUrl}/${indexPath}`;
+      logger.info(`📡 Fetching search index from: ${indexUrl}`);
       
       // Fetch the MkDocs search index
       const response = await fetchService.fetch(indexUrl, {
@@ -249,6 +251,8 @@ export class EnhancedSearchIndexFactory {
           'Accept': 'application/json'
         }
       });
+
+      logger.info(`📡 Search index response: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch search index: ${response.status} ${response.statusText}`);

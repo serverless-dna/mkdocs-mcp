@@ -1,13 +1,13 @@
 
-import { EnhancedSearchIndexFactory } from '../../../src/shared/EnhancedSearchIndexFactory';
 import { VersionNotFoundError } from '../../../src/shared/errors/VersionErrors';
+import { SearchIndexFactory } from '../../../src/shared/SearchIndexFactory';
 import { searchMkDoc } from '../../../src/tools/searchMkDoc/tool';
 import { buildResponse } from '../../../src/tools/shared/buildResponse';
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 // Mock dependencies
-jest.mock('../../../src/shared/EnhancedSearchIndexFactory');
+jest.mock('../../../src/shared/SearchIndexFactory');
 jest.mock('../../../src/tools/shared/buildResponse');
 jest.mock('../../../src/shared/versionDetection', () => ({
   buildVersionedUrl: jest.fn((baseUrl, path, version) => {
@@ -26,11 +26,11 @@ jest.mock('../../../src/services/logger', () => ({
   }
 }));
 
-const MockedEnhancedSearchIndexFactory = EnhancedSearchIndexFactory as jest.MockedClass<typeof EnhancedSearchIndexFactory>;
+const MockedSearchIndexFactory = SearchIndexFactory as jest.MockedClass<typeof SearchIndexFactory>;
 const mockBuildResponse = buildResponse as jest.MockedFunction<typeof buildResponse>;
 
 describe('[SearchMkDoc Tool]', () => {
-  let mockFactory: jest.Mocked<EnhancedSearchIndexFactory>;
+  let mockFactory: jest.Mocked<SearchIndexFactory>;
   let mockSearchIndex: any;
 
   beforeEach(() => {
@@ -50,7 +50,7 @@ describe('[SearchMkDoc Tool]', () => {
       getSearchIndex: jest.fn().mockResolvedValue(mockSearchIndex)
     } as any;
     
-    MockedEnhancedSearchIndexFactory.mockImplementation(() => mockFactory);
+    MockedSearchIndexFactory.mockImplementation(() => mockFactory);
   });
 
   describe('When searching successfully', () => {

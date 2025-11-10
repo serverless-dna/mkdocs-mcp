@@ -16,7 +16,7 @@ export async function main() {
   const transport = new StdioServerTransport();
   logger.info('Starting MkDocs MCP Server');
   
-  const server = createServer(docsUrl, searchDoc);
+  const server = await createServer(docsUrl, searchDoc);
   await server.connect(transport);
   
   logger.info('MkDocs MCP Server running on stdio');

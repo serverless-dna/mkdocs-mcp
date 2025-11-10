@@ -1,7 +1,7 @@
 import { SEARCH_CONFIDENCE_THRESHOLD } from "../../constants";
 import { logger } from "../../services/logger";
-import { EnhancedSearchIndexFactory } from "../../shared/EnhancedSearchIndexFactory";
 import { VersionNotFoundError } from "../../shared/errors/VersionErrors";
+import { SearchIndexFactory } from "../../shared/SearchIndexFactory";
 import { buildVersionedUrl } from "../../shared/versionDetection";
 import { buildResponse } from "../shared/buildResponse";
 
@@ -10,14 +10,15 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 export const searchMkDoc = async (props: { 
   search: string; 
   version?: string; 
-  docsUrl: string 
+  docsUrl: string;
+  searchIndexFactory: SearchIndexFactory;
 }): Promise<CallToolResult> => {
-  const { search, version, docsUrl } = props;
+  const { search, version, docsUrl, searchIndexFactory } = props;
   
   logger.info(`Searching MkDocs for: ${search}`, { version, docsUrl });
   
   try {
-    const factory = new EnhancedSearchIndexFactory(docsUrl);
+    const factory = searchIndexFactory;
     const searchIndex = await factory.getSearchIndex(version);
     
     if (!searchIndex || !searchIndex.index || !searchIndex.documents) {

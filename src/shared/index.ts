@@ -9,15 +9,13 @@ export type { CacheEntry, CacheOptions, CacheStats } from './types/cache';
 // Index loading
 export { IndexLoader } from './IndexLoader';
 
-// Enhanced search index factory
-export { EnhancedSearchIndexFactory } from './EnhancedSearchIndexFactory';
+// Search index factory
+export { SearchIndexFactory } from './SearchIndexFactory';
 export type { SearchIndexOptions } from './types/searchIndex';
 export type { SearchIndex } from './types/searchIndex';
 
 // Error types
 export { IndexLoadError,VersionDetectionError, VersionNotFoundError } from './errors/VersionErrors';
 
-// Legacy exports for backward compatibility
-export type { SearchIndex as LegacySearchIndex } from './searchIndex';
-export { searchDocuments, SearchIndexFactory } from './searchIndex';
+// Legacy exports removed - using SearchIndexFactory only
 export { buildVersionedUrl, clearVersionDetectionCache,detectVersioning } from './versionDetection';
