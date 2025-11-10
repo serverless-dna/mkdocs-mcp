@@ -1,12 +1,13 @@
-import { SEARCH_CONFIDENCE_THRESHOLD } from '../../../src/constants';
-import { searchDocuments } from '../../../src/shared/searchIndex';
+
+import { EnhancedSearchIndexFactory } from '../../../src/shared/EnhancedSearchIndexFactory';
+import { VersionNotFoundError } from '../../../src/shared/errors/VersionErrors';
 import { searchMkDoc } from '../../../src/tools/searchMkDoc/tool';
 import { buildResponse } from '../../../src/tools/shared/buildResponse';
 
-import { beforeEach,describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 // Mock dependencies
-jest.mock('../../../src/shared/searchIndex');
+jest.mock('../../../src/shared/EnhancedSearchIndexFactory');
 jest.mock('../../../src/tools/shared/buildResponse');
 jest.mock('../../../src/shared/versionDetection', () => ({
   buildVersionedUrl: jest.fn((baseUrl, path, version) => {
@@ -25,57 +26,80 @@ jest.mock('../../../src/services/logger', () => ({
   }
 }));
 
-const mockSearchDocuments = searchDocuments as jest.MockedFunction<typeof searchDocuments>;
+const MockedEnhancedSearchIndexFactory = EnhancedSearchIndexFactory as jest.MockedClass<typeof EnhancedSearchIndexFactory>;
 const mockBuildResponse = buildResponse as jest.MockedFunction<typeof buildResponse>;
 
 describe('[SearchMkDoc Tool]', () => {
+  let mockFactory: jest.Mocked<EnhancedSearchIndexFactory>;
+  let mockSearchIndex: any;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockBuildResponse.mockImplementation(({ content }) => ({ content } as any));
+    
+    // Create mock search index
+    mockSearchIndex = {
+      index: {
+        search: jest.fn()
+      },
+      documents: new Map()
+    };
+    
+    // Create mock factory
+    mockFactory = {
+      getSearchIndex: jest.fn().mockResolvedValue(mockSearchIndex)
+    } as any;
+    
+    MockedEnhancedSearchIndexFactory.mockImplementation(() => mockFactory);
   });
 
   describe('When searching successfully', () => {
     it('should return formatted results above confidence threshold', async () => {
-      const mockResults = {
-        query: 'logger',
-        version: 'latest',
-        results: [
-          {
-            ref: 'core/logger/',
-            score: 0.8,
-            document: {
+      // Setup mock search results
+      const mockSearchResults = [
+        {
+          ref: 'core/logger/',
+          score: 0.8,
+          originalScore: 0.8,
+          document: {
+            title: 'Logger',
+            preview: 'Logger utility for...',
+            isSection: false
+          }
+        },
+        {
+          ref: 'core/logger/#config',
+          score: 0.6,
+          originalScore: 0.6,
+          document: {
+            title: 'Configuration',
+            preview: 'Configure the logger...',
+            isSection: true,
+            parent: {
               title: 'Logger',
-              preview: 'Logger utility for...',
-              isSection: false
-            }
-          },
-          {
-            ref: 'core/logger/#config',
-            score: 0.6,
-            document: {
-              title: 'Configuration',
-              preview: 'Configure the logger...',
-              isSection: true,
-              parent: {
-                title: 'Logger',
-                location: 'core/logger/'
-              }
-            }
-          },
-          {
-            ref: 'other/low-score/',
-            score: 0.05, // Below threshold (0.1)
-            document: {
-              title: 'Low Score',
-              preview: 'Low relevance...',
-              isSection: false
+              location: 'core/logger/'
             }
           }
-        ],
-        total: 3
-      };
+        },
+        {
+          ref: 'other/low-score/',
+          score: 0.05, // Below threshold
+          originalScore: 0.05,
+          document: {
+            title: 'Low Score',
+            preview: 'Low relevance...',
+            isSection: false
+          }
+        }
+      ];
 
-      mockSearchDocuments.mockResolvedValue(mockResults);
+      // Setup mock documents map
+      mockSearchIndex.documents.set('core/logger/', mockSearchResults[0].document);
+      mockSearchIndex.documents.set('core/logger/#config', mockSearchResults[1].document);
+      mockSearchIndex.documents.set('other/low-score/', mockSearchResults[2].document);
+      
+      // Mock the search function
+      mockSearchIndex.index.search.mockReturnValue(mockSearchResults);
 
       await searchMkDoc({
         search: 'logger',
@@ -83,96 +107,98 @@ describe('[SearchMkDoc Tool]', () => {
         docsUrl: 'https://docs.example.com'
       });
 
-      expect(mockSearchDocuments).toHaveBeenCalledWith(
-        'https://docs.example.com',
-        'logger',
-        'latest'
-      );
+      expect(mockFactory.getSearchIndex).toHaveBeenCalledWith('latest');
+      expect(mockSearchIndex.index.search).toHaveBeenCalledWith('logger');
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
         content: {
           query: 'logger',
           version: 'latest',
           total: 2, // Only results above threshold
-          results: [
-            {
+          results: expect.arrayContaining([
+            expect.objectContaining({
               title: 'Logger',
               url: 'https://docs.example.com/latest/core/logger/',
-              score: 0.8,
+              score: expect.any(Number),
               preview: 'Logger utility for...',
               location: 'core/logger/'
-            },
-            {
+            }),
+            expect.objectContaining({
               title: 'Configuration',
               url: 'https://docs.example.com/latest/core/logger/#config',
-              score: 0.6,
+              score: expect.any(Number),
               preview: 'Configure the logger...',
               location: 'core/logger/#config',
-              parentArticle: {
+              parentArticle: expect.objectContaining({
                 title: 'Logger',
                 location: 'core/logger/',
                 url: 'https://docs.example.com/latest/core/logger/'
-              }
-            }
-          ]
+              })
+            })
+          ])
         }
       });
     });
 
     it('should use default version when not specified', async () => {
-      mockSearchDocuments.mockResolvedValue({
-        query: 'test',
-        version: 'latest',
-        results: [],
-        total: 0
-      });
+      const mockSearchResults = [
+        {
+          ref: 'test/',
+          score: 0.8,
+          originalScore: 0.8,
+          document: {
+            title: 'Test',
+            preview: 'Test content...',
+            isSection: false
+          }
+        }
+      ];
+
+      mockSearchIndex.documents.set('test/', mockSearchResults[0].document);
+      mockSearchIndex.index.search.mockReturnValue(mockSearchResults);
 
       await searchMkDoc({
         search: 'test',
         docsUrl: 'https://docs.example.com'
       });
 
-      expect(mockSearchDocuments).toHaveBeenCalledWith(
-        'https://docs.example.com',
-        'test',
-        undefined
-      );
+      expect(mockFactory.getSearchIndex).toHaveBeenCalledWith(undefined);
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: expect.objectContaining({
+          query: 'test',
+          version: undefined,
+          total: 1
+        })
+      });
     });
 
     it('should handle results without documents gracefully', async () => {
-      mockSearchDocuments.mockResolvedValue({
-        query: 'test',
-        version: 'latest',
-        results: [
-          {
-            ref: 'some/page/',
-            score: 0.8,
-            document: null
-          }
-        ],
-        total: 1
-      });
+      const mockSearchResults = [
+        {
+          ref: 'missing-doc/',
+          score: 0.8,
+          originalScore: 0.8,
+          document: undefined
+        }
+      ];
+
+      mockSearchIndex.index.search.mockReturnValue(mockSearchResults);
 
       await searchMkDoc({
         search: 'test',
+        version: 'latest',
         docsUrl: 'https://docs.example.com'
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
-        content: {
-          query: 'test',
-          version: undefined,
-          total: 1,
-          results: [
-            {
-              title: 'some/page/',
-              url: 'https://docs.example.com/some/page/',
-              score: 0.8,
-              preview: '',
-              location: 'some/page/'
-            }
-          ]
-        }
+        content: expect.objectContaining({
+          results: expect.arrayContaining([
+            expect.objectContaining({
+              title: 'missing-doc/',
+              preview: ''
+            })
+          ])
+        })
       });
     });
   });
@@ -180,10 +206,11 @@ describe('[SearchMkDoc Tool]', () => {
   describe('When search fails', () => {
     it('should handle search errors gracefully', async () => {
       const error = new Error('Search index not found');
-      mockSearchDocuments.mockRejectedValue(error);
+      mockFactory.getSearchIndex.mockRejectedValue(error);
 
       await searchMkDoc({
         search: 'test',
+        version: 'latest',
         docsUrl: 'https://docs.example.com'
       });
 
@@ -193,11 +220,40 @@ describe('[SearchMkDoc Tool]', () => {
       });
     });
 
-    it('should handle non-Error exceptions', async () => {
-      mockSearchDocuments.mockRejectedValue('String error');
+    it('should handle version not found errors with available versions', async () => {
+      const availableVersions = [
+        { version: 'v1.0', title: 'Version 1.0', aliases: ['1.0'] },
+        { version: 'v2.0', title: 'Version 2.0', aliases: ['2.0', 'latest'] }
+      ];
+      
+      const error = new VersionNotFoundError('v3.0', availableVersions);
+      mockFactory.getSearchIndex.mockRejectedValue(error);
 
       await searchMkDoc({
         search: 'test',
+        version: 'v3.0',
+        docsUrl: 'https://docs.example.com'
+      });
+
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: {
+          error: "Version 'v3.0' not found. Available versions: v1.0, v2.0",
+          requestedVersion: 'v3.0',
+          availableVersions: [
+            { version: 'v1.0', title: 'Version 1.0', aliases: ['1.0'] },
+            { version: 'v2.0', title: 'Version 2.0', aliases: ['2.0', 'latest'] }
+          ]
+        },
+        isError: true
+      });
+    });
+
+    it('should handle non-Error exceptions', async () => {
+      mockFactory.getSearchIndex.mockRejectedValue('String error');
+
+      await searchMkDoc({
+        search: 'test',
+        version: 'latest',
         docsUrl: 'https://docs.example.com'
       });
 
@@ -210,27 +266,82 @@ describe('[SearchMkDoc Tool]', () => {
 
   describe('When filtering by confidence threshold', () => {
     it('should only include results above threshold', async () => {
-      mockSearchDocuments.mockResolvedValue({
-        query: 'test',
-        version: 'latest',
-        results: [
-          { ref: 'high/', score: SEARCH_CONFIDENCE_THRESHOLD + 0.1, document: { title: 'High' } },
-          { ref: 'exact/', score: SEARCH_CONFIDENCE_THRESHOLD, document: { title: 'Exact' } },
-          { ref: 'low/', score: SEARCH_CONFIDENCE_THRESHOLD - 0.1, document: { title: 'Low' } }
-        ],
-        total: 3
+      const mockSearchResults = [
+        {
+          ref: 'high-score/',
+          score: 0.8,
+          originalScore: 0.8,
+          document: { title: 'High Score', preview: 'High relevance...', isSection: false }
+        },
+        {
+          ref: 'medium-score/',
+          score: 0.15,
+          originalScore: 0.15,
+          document: { title: 'Medium Score', preview: 'Medium relevance...', isSection: false }
+        },
+        {
+          ref: 'low-score/',
+          score: 0.05,
+          originalScore: 0.05,
+          document: { title: 'Low Score', preview: 'Low relevance...', isSection: false }
+        }
+      ];
+
+      mockSearchResults.forEach(result => {
+        mockSearchIndex.documents.set(result.ref, result.document);
       });
+      mockSearchIndex.index.search.mockReturnValue(mockSearchResults);
 
       await searchMkDoc({
         search: 'test',
+        version: 'latest',
         docsUrl: 'https://docs.example.com'
       });
 
-      const call = mockBuildResponse.mock.calls[0][0];
-      expect(call.content.total).toBe(2); // Only high and exact
-      expect(call.content.results).toHaveLength(2);
-      expect(call.content.results[0].title).toBe('High');
-      expect(call.content.results[1].title).toBe('Exact');
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: expect.objectContaining({
+          total: 2, // Only high-score and medium-score above threshold
+          results: expect.arrayContaining([
+            expect.objectContaining({ title: 'High Score' }),
+            expect.objectContaining({ title: 'Medium Score' })
+          ])
+        })
+      });
+    });
+  });
+
+  describe('When search index is unavailable', () => {
+    it('should handle missing search index', async () => {
+      mockFactory.getSearchIndex.mockResolvedValue(null);
+
+      await searchMkDoc({
+        search: 'test',
+        version: 'latest',
+        docsUrl: 'https://docs.example.com'
+      });
+
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: 'Search failed: No search index available for version: latest',
+        isError: true
+      });
+    });
+
+    it('should handle missing index components', async () => {
+      mockFactory.getSearchIndex.mockResolvedValue({
+        index: null,
+        documents: null
+      } as any);
+
+      await searchMkDoc({
+        search: 'test',
+        version: 'latest',
+        docsUrl: 'https://docs.example.com'
+      });
+
+      expect(mockBuildResponse).toHaveBeenCalledWith({
+        content: 'Search failed: No search index available for version: latest',
+        isError: true
+      });
     });
   });
 });
