@@ -332,16 +332,56 @@ export class MkDocsMarkdownConverter {
 
   /**
    * Find the nearest heading before an element
+   * Searches previous siblings, then traverses up the DOM tree
    */
   private findNearestHeading($element: cheerio.Cheerio<cheerio.Element>): string | null {
+    // First, try to find heading in previous siblings
     let current = $element.prev();
     let attempts = 0;
     
     while (current.length && attempts < 10) {
       if (current.is('h1, h2, h3, h4, h5, h6')) {
-        return current.text().trim();
+        const $heading = current.clone();
+        // Remove headerlink elements
+        $heading.find('.headerlink').remove();
+        return $heading.text().trim();
       }
       current = current.prev();
+      attempts++;
+    }
+    
+    // If not found in siblings, traverse up the DOM tree
+    let $parent = $element.parent();
+    attempts = 0;
+    
+    while ($parent.length && attempts < 10) {
+      // Look for heading in parent's previous siblings
+      let $sibling = $parent.prev();
+      let siblingAttempts = 0;
+      
+      while ($sibling.length && siblingAttempts < 5) {
+        if ($sibling.is('h1, h2, h3, h4, h5, h6')) {
+          const $heading = $sibling.clone();
+          // Remove headerlink elements
+          $heading.find('.headerlink').remove();
+          return $heading.text().trim();
+        }
+        
+        // Also check if sibling contains a heading
+        const $headingInSibling = $sibling.find('h1, h2, h3, h4, h5, h6').last();
+        if ($headingInSibling.length) {
+          const $heading = $headingInSibling.clone();
+          // Remove headerlink elements
+          $heading.find('.headerlink').remove();
+          return $heading.text().trim();
+        }
+        
+        $sibling = $sibling.prev();
+        siblingAttempts++;
+      }
+      
+      // Move up to parent's parent
+      $parent = $parent.parent();
       attempts++;
     }
     
