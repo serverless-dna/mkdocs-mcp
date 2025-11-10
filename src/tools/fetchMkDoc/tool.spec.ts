@@ -1,8 +1,9 @@
-import { fetchMkDoc } from './tool';
 import { fetchDocPage } from '../../fetch-doc';
 import { buildResponse } from '../shared/buildResponse';
 
-import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+import { fetchMkDoc } from './tool';
+
+import { beforeEach,describe, expect, it, jest } from '@jest/globals';
 
 // Mock dependencies
 jest.mock('../../fetch-doc');
@@ -77,7 +78,12 @@ describe('[FetchMkDoc Tool]', () => {
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
-        content: 'Fetch failed: Page not found',
+        content: {
+          title: 'Error',
+          markdown: 'Fetch failed: Page not found',
+          code_examples: [],
+          url: 'https://docs.example.com/nonexistent/'
+        },
         isError: true
       });
     });
@@ -90,7 +96,12 @@ describe('[FetchMkDoc Tool]', () => {
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
-        content: 'Fetch failed: Network timeout',
+        content: {
+          title: 'Error',
+          markdown: 'Fetch failed: Network timeout',
+          code_examples: [],
+          url: 'https://docs.example.com/timeout/'
+        },
         isError: true
       });
     });
@@ -104,7 +115,12 @@ describe('[FetchMkDoc Tool]', () => {
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
-        content: 'Fetch failed: Invalid URL format',
+        content: {
+          title: 'Error',
+          markdown: 'Fetch failed: Invalid URL format',
+          code_examples: [],
+          url: 'invalid://url'
+        },
         isError: true
       });
     });

@@ -94,8 +94,9 @@ describe('[DocFetcher] When fetching documentation pages', () => {
     
     // Assert
     expect(fetchService.fetch).toHaveBeenCalledWith(url, expect.any(Object));
-    expect(result).toContain('# Test Heading');
-    expect(result).toContain('Test paragraph');
+    expect(result.title).toBe('Test Heading');
+    expect(result.markdown).toContain('# Test Heading');
+    expect(result.markdown).toContain('Test paragraph');
   });
   
   it('should reject invalid URLs', async () => {
@@ -113,9 +114,10 @@ describe('[DocFetcher] When fetching documentation pages', () => {
     const result = await fetchDocPage(url);
     
     // Assert
-    expect(result).toContain('Error fetching documentation');
+    expect(result.title).toBe('Error');
+    expect(result.markdown).toContain('Error fetching documentation');
     // Just check for any error message, not specifically "Invalid URL"
-    expect(result).toMatch(/Error/);
+    expect(result.markdown).toMatch(/Error/);
   });
   
   it('should handle fetch errors gracefully', async () => {
@@ -127,8 +129,9 @@ describe('[DocFetcher] When fetching documentation pages', () => {
     const result = await fetchDocPage(url);
     
     // Assert
-    expect(result).toContain('Error fetching documentation');
-    expect(result).toContain('Network error');
+    expect(result.title).toBe('Error');
+    expect(result.markdown).toContain('Error fetching documentation');
+    expect(result.markdown).toContain('Network error');
   });
   
   it('should handle non-200 responses gracefully', async () => {
@@ -145,8 +148,9 @@ describe('[DocFetcher] When fetching documentation pages', () => {
     const result = await fetchDocPage(url);
     
     // Assert
-    expect(result).toContain('Error fetching documentation');
-    expect(result).toContain('Failed to fetch page: 404 Not Found');
+    expect(result.title).toBe('Error');
+    expect(result.markdown).toContain('Error fetching documentation');
+    expect(result.markdown).toContain('Failed to fetch page: 404 Not Found');
   });
 });
 

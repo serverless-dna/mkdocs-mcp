@@ -11,13 +11,20 @@ export const fetchMkDoc = async (props: { url: string }): Promise<CallToolResult
   
   try {
     const result = await fetchDocPage(url);
+    
+    // Return the structured JSON result
     return buildResponse({
       content: result
     });
   } catch (error) {
     logger.error("Fetch failed", { error });
     return buildResponse({
-      content: `Fetch failed: ${error instanceof Error ? error.message : String(error)}`,
+      content: {
+        title: 'Error',
+        markdown: `Fetch failed: ${error instanceof Error ? error.message : String(error)}`,
+        code_examples: [],
+        url
+      },
       isError: true
     });
   }
