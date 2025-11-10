@@ -34,7 +34,7 @@
     "postversion": "npm run build",
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run",
-    "dev:build": "npm run build && npx -y @modelcontextprotocol/inspector node dist/index.js https://strandsagents.com \"search AWS Strands Agents online documentation\""
+    "dev:build": "npm run build && npx -y @modelcontextprotocol/inspector node dist/index.js https://main.dsrdam9qmcis1.amplifyapp.com/ \"search AWS Strands Agents online documentation\""
   },
   "keywords": [
     "aws",

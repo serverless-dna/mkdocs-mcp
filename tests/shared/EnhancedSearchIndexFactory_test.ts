@@ -21,16 +21,27 @@ jest.mock('../../src/services/logger', () => ({
 
 describe('[EnhancedSearchIndexFactory]', () => {
   let factory: EnhancedSearchIndexFactory;
+  let mockFetch: jest.MockedFunction<any>;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Mock the fetch service
+    mockFetch = jest.fn();
+    jest.doMock('../../src/services/fetch', () => ({
+      fetchService: {
+        fetch: mockFetch
+      }
+    }));
+    
     factory = new EnhancedSearchIndexFactory('https://docs.example.com');
   });
 
   describe('Version Error Handling', () => {
     it('should throw VersionNotFoundError when invalid version is requested with available versions', async () => {
-      // Mock the version manager to return invalid version with available versions
+      // Mock the version manager to return versioned site and invalid version
       const mockVersionManager = {
+        detectVersioning: jest.fn().mockResolvedValue(true),
         resolveVersion: jest.fn().mockResolvedValue({
           valid: false,
           resolved: '3.x',
@@ -63,8 +74,9 @@ describe('[EnhancedSearchIndexFactory]', () => {
     });
 
     it('should return undefined when invalid version is requested without available versions', async () => {
-      // Mock the version manager to return invalid version without available versions
+      // Mock the version manager to return versioned site and invalid version without available versions
       const mockVersionManager = {
+        detectVersioning: jest.fn().mockResolvedValue(true),
         resolveVersion: jest.fn().mockResolvedValue({
           valid: false,
           resolved: '3.x',
@@ -82,8 +94,9 @@ describe('[EnhancedSearchIndexFactory]', () => {
     });
 
     it('should return undefined when invalid version is requested with empty available versions', async () => {
-      // Mock the version manager to return invalid version with empty available versions
+      // Mock the version manager to return versioned site and invalid version with empty available versions
       const mockVersionManager = {
+        detectVersioning: jest.fn().mockResolvedValue(true),
         resolveVersion: jest.fn().mockResolvedValue({
           valid: false,
           resolved: '3.x',
@@ -98,6 +111,33 @@ describe('[EnhancedSearchIndexFactory]', () => {
       // Should return undefined instead of throwing
       const result = await factory.getSearchIndex('3.x');
       expect(result).toBeUndefined();
+    });
+
+    it('should handle non-versioned sites correctly', async () => {
+      // Mock the version manager to return non-versioned site
+      const mockVersionManager = {
+        detectVersioning: jest.fn().mockResolvedValue(false)
+      };
+
+      // Mock successful fetch response
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          config: { lang: ['en'], separator: ' ', pipeline: [] },
+          docs: [
+            { location: 'index/', title: 'Home', text: 'Welcome to the docs' }
+          ]
+        })
+      });
+
+      // Replace the version manager
+      (factory as any).versionManager = mockVersionManager;
+
+      // Should return search index for non-versioned site
+      const result = await factory.getSearchIndex('3.x');
+      expect(result).toBeDefined();
+      expect(result?.version).toBe('default');
+      expect(mockVersionManager.detectVersioning).toHaveBeenCalled();
     });
   });
 });

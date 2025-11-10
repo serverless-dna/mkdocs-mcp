@@ -34,6 +34,8 @@ export class EnhancedSearchIndexFactory {
   private readonly indexCache: IndexCache<SearchIndex>;
   private readonly indexLoader: IndexLoader<SearchIndex>;
   private readonly baseUrl: string;
+  private hasVersioning: boolean | null = null;
+  private initializationPromise: Promise<void> | null = null;
 
   constructor(baseUrl: string, options: SearchIndexOptions = {}) {
     this.baseUrl = baseUrl;
@@ -45,44 +47,50 @@ export class EnhancedSearchIndexFactory {
   }
 
   /**
+   * Initialize the factory by detecting versioning upfront
+   */
+  private async initialize(): Promise<void> {
+    if (this.hasVersioning !== null) {
+      return; // Already initialized
+    }
+
+    try {
+      this.hasVersioning = await this.versionManager.detectVersioning();
+      logger.debug(`Site versioning detected: ${this.hasVersioning ? 'enabled' : 'disabled'} for ${this.baseUrl}`);
+    } catch (error) {
+      logger.warn(`Failed to detect versioning for ${this.baseUrl}, assuming non-versioned:`, error);
+      this.hasVersioning = false;
+    }
+  }
+
+  /**
+   * Ensure initialization is complete
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (this.initializationPromise === null) {
+      this.initializationPromise = this.initialize();
+    }
+    await this.initializationPromise;
+  }
+
+  /**
    * Get a search index for the specified version
    */
   async getSearchIndex(version?: string): Promise<SearchIndex | undefined> {
     try {
-      // Resolve the version
-      const resolution = await this.versionManager.resolveVersion(version);
-      
-      if (!resolution.valid) {
-        // If we have available versions, throw VersionNotFoundError
-        if (resolution.available && resolution.available.length > 0) {
-          throw new VersionNotFoundError(version || 'undefined', resolution.available);
+      // Ensure initialization is complete
+      await this.ensureInitialized();
+
+      // Handle non-versioned sites
+      if (!this.hasVersioning) {
+        if (version && version !== 'latest') {
+          logger.warn(`Version '${version}' requested for non-versioned site, ignoring version parameter`);
         }
-        
-        logger.warn(`Invalid version requested: ${version}. ${resolution.error}`);
-        return undefined;
+        return this.getSearchIndexForNonVersionedSite();
       }
 
-      const resolvedVersion = resolution.resolved;
-      const cacheKey = this.createCacheKey(resolvedVersion);
-
-      // Check cache first
-      const cachedIndex = this.indexCache.get(cacheKey);
-      if (cachedIndex) {
-        logger.debug(`Cache hit for search index: ${cacheKey}`);
-        return cachedIndex;
-      }
-
-      // Load the index using the IndexLoader
-      const searchIndex = await this.indexLoader.loadIndex(
-        resolvedVersion,
-        () => this.loadSearchIndex(resolvedVersion, resolution.isDefault)
-      );
-
-      // Cache the loaded index
-      this.indexCache.set(cacheKey, searchIndex);
-      
-      logger.debug(`Search index loaded and cached: ${cacheKey}`);
-      return searchIndex;
+      // Handle versioned sites
+      return this.getSearchIndexForVersionedSite(version);
 
     } catch (error) {
       // Re-throw VersionNotFoundError to preserve version information
@@ -93,6 +101,69 @@ export class EnhancedSearchIndexFactory {
       logger.error(`Failed to get search index for version ${version}:`, error);
       return undefined;
     }
+  }
+
+  /**
+   * Get search index for non-versioned sites
+   */
+  private async getSearchIndexForNonVersionedSite(): Promise<SearchIndex | undefined> {
+    const cacheKey = this.createCacheKey('default');
+
+    // Check cache first
+    const cachedIndex = this.indexCache.get(cacheKey);
+    if (cachedIndex) {
+      logger.debug(`Cache hit for non-versioned search index: ${cacheKey}`);
+      return cachedIndex;
+    }
+
+    // Load the index directly without version resolution
+    const searchIndex = await this.loadSearchIndexDirect('search/search_index.json', 'default');
+
+    // Cache the loaded index
+    this.indexCache.set(cacheKey, searchIndex);
+    
+    logger.debug(`Non-versioned search index loaded and cached: ${cacheKey}`);
+    return searchIndex;
+  }
+
+  /**
+   * Get search index for versioned sites
+   */
+  private async getSearchIndexForVersionedSite(version?: string): Promise<SearchIndex | undefined> {
+    // Resolve the version
+    const resolution = await this.versionManager.resolveVersion(version);
+    
+    if (!resolution.valid) {
+      // If we have available versions, throw VersionNotFoundError
+      if (resolution.available && resolution.available.length > 0) {
+        throw new VersionNotFoundError(version || 'undefined', resolution.available);
+      }
+      
+      logger.warn(`Invalid version requested: ${version}. ${resolution.error}`);
+      return undefined;
+    }
+
+    const resolvedVersion = resolution.resolved;
+    const cacheKey = this.createCacheKey(resolvedVersion);
+
+    // Check cache first
+    const cachedIndex = this.indexCache.get(cacheKey);
+    if (cachedIndex) {
+      logger.debug(`Cache hit for versioned search index: ${cacheKey}`);
+      return cachedIndex;
+    }
+
+    // Load the index using the IndexLoader
+    const searchIndex = await this.indexLoader.loadIndex(
+      resolvedVersion,
+      () => this.loadSearchIndex(resolvedVersion, resolution.isDefault)
+    );
+
+    // Cache the loaded index
+    this.indexCache.set(cacheKey, searchIndex);
+    
+    logger.debug(`Versioned search index loaded and cached: ${cacheKey}`);
+    return searchIndex;
   }
 
   /**
@@ -144,7 +215,7 @@ export class EnhancedSearchIndexFactory {
   }
 
   /**
-   * Load a search index from the remote source
+   * Load a search index from the remote source (for versioned sites)
    */
   private async loadSearchIndex(version: string, isDefault: boolean): Promise<SearchIndex> {
     logger.debug(`Loading search index for version: ${version}`);
@@ -152,6 +223,24 @@ export class EnhancedSearchIndexFactory {
     try {
       // Build the search index URL
       const indexUrl = await this.versionManager.buildVersionedUrl('search/search_index.json', version);
+      
+      return this.loadSearchIndexDirect(indexUrl, version, isDefault);
+
+    } catch (error) {
+      logger.error(`Failed to load search index for version ${version}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load a search index directly from a URL (for both versioned and non-versioned sites)
+   */
+  private async loadSearchIndexDirect(indexPath: string, version: string, isDefault: boolean = true): Promise<SearchIndex> {
+    logger.debug(`Loading search index from: ${indexPath}`);
+    
+    try {
+      // Build the full URL
+      const indexUrl = indexPath.startsWith('http') ? indexPath : `${this.baseUrl}/${indexPath}`;
       
       // Fetch the MkDocs search index
       const response = await fetchService.fetch(indexUrl, {
@@ -193,7 +282,7 @@ export class EnhancedSearchIndexFactory {
       return searchIndex;
 
     } catch (error) {
-      logger.error(`Failed to load search index for version ${version}:`, error);
+      logger.error(`Failed to load search index from ${indexPath}:`, error);
       throw error;
     }
   }
