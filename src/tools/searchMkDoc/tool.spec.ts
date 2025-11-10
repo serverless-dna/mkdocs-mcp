@@ -69,7 +69,7 @@ describe('[SearchMkDoc Tool]', () => {
 
       mockSearchDocuments.mockResolvedValue(mockResults);
 
-      const result = await searchMkDoc({
+      await searchMkDoc({
         search: 'logger',
         version: 'latest',
         docsUrl: 'https://docs.example.com'

@@ -35,7 +35,7 @@ describe('[FetchMkDoc Tool]', () => {
 
       mockFetchDocPage.mockResolvedValue(mockResult);
 
-      const result = await fetchMkDoc({
+      await fetchMkDoc({
         url: 'https://docs.example.com/latest/core/logger/'
       });
 
