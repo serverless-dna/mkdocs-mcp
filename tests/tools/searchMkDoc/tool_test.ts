@@ -104,7 +104,8 @@ describe('[SearchMkDoc Tool]', () => {
       await searchMkDoc({
         search: 'logger',
         version: 'latest',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockFactory.getSearchIndex).toHaveBeenCalledWith('latest');
@@ -159,7 +160,8 @@ describe('[SearchMkDoc Tool]', () => {
 
       await searchMkDoc({
         search: 'test',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockFactory.getSearchIndex).toHaveBeenCalledWith(undefined);
@@ -187,7 +189,8 @@ describe('[SearchMkDoc Tool]', () => {
       await searchMkDoc({
         search: 'test',
         version: 'latest',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
@@ -211,7 +214,8 @@ describe('[SearchMkDoc Tool]', () => {
       await searchMkDoc({
         search: 'test',
         version: 'latest',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
@@ -232,7 +236,8 @@ describe('[SearchMkDoc Tool]', () => {
       await searchMkDoc({
         search: 'test',
         version: 'v3.0',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
@@ -254,7 +259,8 @@ describe('[SearchMkDoc Tool]', () => {
       await searchMkDoc({
         search: 'test',
         version: 'latest',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
@@ -295,7 +301,8 @@ describe('[SearchMkDoc Tool]', () => {
       await searchMkDoc({
         search: 'test',
         version: 'latest',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
@@ -317,7 +324,8 @@ describe('[SearchMkDoc Tool]', () => {
       await searchMkDoc({
         search: 'test',
         version: 'latest',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({
@@ -335,7 +343,8 @@ describe('[SearchMkDoc Tool]', () => {
       await searchMkDoc({
         search: 'test',
         version: 'latest',
-        docsUrl: 'https://docs.example.com'
+        docsUrl: 'https://docs.example.com',
+        searchIndexFactory: mockFactory
       });
 
       expect(mockBuildResponse).toHaveBeenCalledWith({

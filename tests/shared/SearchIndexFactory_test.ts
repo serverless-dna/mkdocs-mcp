@@ -1,40 +1,21 @@
+import { fetchService } from '../../src/services/fetch';
 import { VersionNotFoundError } from '../../src/shared/errors/VersionErrors';
 import { SearchIndexFactory } from '../../src/shared/SearchIndexFactory';
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 // Mock dependencies
-jest.mock('../../src/services/fetch', () => ({
-  fetchService: {
-    fetch: jest.fn()
-  }
-}));
+jest.mock('../../src/services/fetch');
+jest.mock('../../src/services/logger');
 
-jest.mock('../../src/services/logger', () => ({
-  logger: {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn()
-  }
-}));
+const mockFetchService = fetchService as jest.Mocked<typeof fetchService>;
 
 describe('[SearchIndexFactory]', () => {
   let factory: SearchIndexFactory;
-  let mockFetch: jest.MockedFunction<any>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Mock the fetch service
-    mockFetch = jest.fn();
-    jest.doMock('../../src/services/fetch', () => ({
-      fetchService: {
-        fetch: mockFetch
-      }
-    }));
-    
-    factory = new SearchIndexFactory('https://docs.example.com');
+    factory = new SearchIndexFactory('https://docs.example.com', { hasVersioning: true });
   });
 
   describe('Version Error Handling', () => {
@@ -114,30 +95,26 @@ describe('[SearchIndexFactory]', () => {
     });
 
     it('should handle non-versioned sites correctly', async () => {
-      // Mock the version manager to return non-versioned site
-      const mockVersionManager = {
-        detectVersioning: jest.fn().mockResolvedValue(false)
-      };
-
+      // Create a factory for non-versioned site
+      const nonVersionedFactory = new SearchIndexFactory('https://docs.example.com', { hasVersioning: false });
+      
       // Mock successful fetch response
-      mockFetch.mockResolvedValue({
+      mockFetchService.fetch.mockResolvedValue({
         ok: true,
+        status: 200,
+        statusText: 'OK',
         json: jest.fn().mockResolvedValue({
           config: { lang: ['en'], separator: ' ', pipeline: [] },
           docs: [
             { location: 'index/', title: 'Home', text: 'Welcome to the docs' }
           ]
         })
-      });
-
-      // Replace the version manager
-      (factory as any).versionManager = mockVersionManager;
+      } as any);
 
       // Should return search index for non-versioned site
-      const result = await factory.getSearchIndex('3.x');
+      const result = await nonVersionedFactory.getSearchIndex('3.x');
       expect(result).toBeDefined();
       expect(result?.version).toBe('default');
-      expect(mockVersionManager.detectVersioning).toHaveBeenCalled();
     });
   });
 });

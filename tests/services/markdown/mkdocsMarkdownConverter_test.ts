@@ -188,7 +188,7 @@ describe('MkDocsMarkdownConverter', () => {
   
   describe('Integration test with real MkDocs HTML', () => {
     it('should convert the example MkDocs page', () => {
-      const examplePath = join(__dirname, '../../../docs/mkdocs-site-example.html');
+      const examplePath = join(__dirname, '../../fixtures/mkdocs-site-example.html');
       const html = readFileSync(examplePath, 'utf-8');
       
       const result = converter.convert(html, 'https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/graph/');
