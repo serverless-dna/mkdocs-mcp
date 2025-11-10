@@ -1,3 +1,2 @@
-export * from './converterFactory';
-export * from './nodeHtmlMarkdownConverter';
+export * from './mkdocsMarkdownConverter';
 export * from './types';

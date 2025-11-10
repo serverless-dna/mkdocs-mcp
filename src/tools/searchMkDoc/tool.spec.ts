@@ -1,9 +1,10 @@
-import { searchMkDoc } from './tool';
+import { SEARCH_CONFIDENCE_THRESHOLD } from '../../constants';
 import { searchDocuments } from '../../shared/searchIndex';
 import { buildResponse } from '../shared/buildResponse';
-import { SEARCH_CONFIDENCE_THRESHOLD } from '../../constants';
 
-import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+import { searchMkDoc } from './tool';
+
+import { beforeEach,describe, expect, it, jest } from '@jest/globals';
 
 // Mock dependencies
 jest.mock('../../shared/searchIndex');

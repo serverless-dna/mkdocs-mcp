@@ -1,6 +1,8 @@
+import { logger } from '../../services/logger';
+
 import { buildResponse } from './buildResponse';
 
-import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+import { beforeEach,describe, expect, it, jest } from '@jest/globals';
 
 // Mock logger
 jest.mock('../../services/logger', () => ({
@@ -10,7 +12,6 @@ jest.mock('../../services/logger', () => ({
   }
 }));
 
-import { logger } from '../../services/logger';
 const mockLogger = logger as jest.Mocked<typeof logger>;
 
 describe('[BuildResponse Utility]', () => {
