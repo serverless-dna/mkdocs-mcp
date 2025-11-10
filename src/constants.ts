@@ -3,4 +3,4 @@ export const SEARCH_CONFIDENCE_THRESHOLD = parseFloat(
 );
 
 export const MCP_SERVER_NAME = 'mkdocs-mcp-server';
-export const MCP_SERVER_VERSION = '0.2.0';
+export const MCP_SERVER_VERSION = '0.3.0';
