@@ -1,15 +1,14 @@
-import { SEARCH_CONFIDENCE_THRESHOLD } from '../../constants';
-import { searchDocuments } from '../../shared/searchIndex';
-import { buildResponse } from '../shared/buildResponse';
-
-import { searchMkDoc } from './tool';
+import { SEARCH_CONFIDENCE_THRESHOLD } from '../../../src/constants';
+import { searchDocuments } from '../../../src/shared/searchIndex';
+import { searchMkDoc } from '../../../src/tools/searchMkDoc/tool';
+import { buildResponse } from '../../../src/tools/shared/buildResponse';
 
 import { beforeEach,describe, expect, it, jest } from '@jest/globals';
 
 // Mock dependencies
-jest.mock('../../shared/searchIndex');
-jest.mock('../shared/buildResponse');
-jest.mock('../../services/logger', () => ({
+jest.mock('../../../src/shared/searchIndex');
+jest.mock('../../../src/tools/shared/buildResponse');
+jest.mock('../../../src/services/logger', () => ({
   logger: {
     info: jest.fn(),
     debug: jest.fn(),

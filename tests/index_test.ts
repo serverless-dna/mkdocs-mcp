@@ -1,11 +1,11 @@
-import { logger } from './services/logger';
-import { createServer } from './server';
+import { createServer } from '../src/server';
+import { logger } from '../src/services/logger';
 
 import { afterEach,beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 // Mock the logger
-jest.mock('./services/logger', () => ({
+jest.mock('../src/services/logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -17,7 +17,7 @@ jest.mock('./services/logger', () => ({
 
 
 // Mock the server module
-jest.mock('./server', () => ({
+jest.mock('../src/server', () => ({
   createServer: jest.fn()
 }));
 
@@ -63,7 +63,7 @@ describe('MkDocs MCP Server', () => {
       mockStdioServerTransport.mockReturnValue(mockTransport as any);
 
       // Import and run main
-      const { main } = await import('./index'); await main();
+      const { main } = await import('../src/index'); await main();
 
       // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -89,7 +89,7 @@ describe('MkDocs MCP Server', () => {
       mockStdioServerTransport.mockReturnValue(mockTransport as any);
 
       // Import and run main
-      const { main } = await import('./index'); await main();
+      const { main } = await import('../src/index'); await main();
 
       // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -102,7 +102,7 @@ describe('MkDocs MCP Server', () => {
       process.argv = ['node', 'index.js'];
 
       // Import and expect main to throw
-      const { main } = await import('./index');
+      const { main } = await import('../src/index');
       await expect(main()).rejects.toThrow('No doc site provided');
     });
 
@@ -120,7 +120,7 @@ describe('MkDocs MCP Server', () => {
       mockStdioServerTransport.mockReturnValue(mockTransport as any);
 
       // Import and expect main to throw
-      const { main } = await import('./index');
+      const { main } = await import('../src/index');
       await expect(main()).rejects.toThrow('Connection failed');
     });
   });

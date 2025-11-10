@@ -7,13 +7,13 @@
 
 // Mock the modules before importing anything
 // Now import the modules
-import { fetchService } from './services/fetch';
-import { ContentType } from './services/fetch/types';
-import { clearDocCache, fetchDocPage } from './fetch-doc';
+import { clearDocCache, fetchDocPage } from '../src/fetch-doc';
+import { fetchService } from '../src/services/fetch';
+import { ContentType } from '../src/services/fetch/types';
 
 import * as cacache from 'cacache';
 
-jest.mock('./services/fetch', () => ({
+jest.mock('../src/services/fetch', () => ({
   fetchService: {
     fetch: jest.fn(),
     clearCache: jest.fn()

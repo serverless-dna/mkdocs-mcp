@@ -1,5 +1,5 @@
 
-import { logger } from './logger';
+import { logger } from '../../../src/services/logger/logger';
 
 import { afterEach,beforeEach, describe, expect, it, jest } from '@jest/globals';
 

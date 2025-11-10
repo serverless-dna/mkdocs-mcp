@@ -1,14 +1,13 @@
-import { fetchDocPage } from '../../fetch-doc';
-import { buildResponse } from '../shared/buildResponse';
-
-import { fetchMkDoc } from './tool';
+import { fetchDocPage } from '../../../src/fetch-doc';
+import { fetchMkDoc } from '../../../src/tools/fetchMkDoc/tool';
+import { buildResponse } from '../../../src/tools/shared/buildResponse';
 
 import { beforeEach,describe, expect, it, jest } from '@jest/globals';
 
 // Mock dependencies
-jest.mock('../../fetch-doc');
-jest.mock('../shared/buildResponse');
-jest.mock('../../services/logger', () => ({
+jest.mock('../../../src/fetch-doc');
+jest.mock('../../../src/tools/shared/buildResponse');
+jest.mock('../../../src/services/logger', () => ({
   logger: {
     info: jest.fn(),
     error: jest.fn()

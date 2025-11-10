@@ -17,5 +17,7 @@ inclusion: always
 - Git commit messages must be concise, but accurate
 - Git commit messages must be in the past tense
 - Git commit messages must be in the imperative mood
+- tests I want in a seperate tests folder mimicing the src structure
+- We are using npm for managing dependencies and tasks make sure to use npm!
 
 

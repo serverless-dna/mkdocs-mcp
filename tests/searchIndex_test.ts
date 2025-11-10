@@ -1,7 +1,7 @@
-import { searchDocuments, SearchIndexFactory } from './shared/searchIndex';
+import { searchDocuments, SearchIndexFactory } from '../src/shared/searchIndex';
 
 // Mock the fetch service
-jest.mock('./services/fetch', () => {
+jest.mock('../src/services/fetch', () => {
   const mockFetch = jest.fn().mockImplementation((url) => {
     // Check for invalid version
     if (url.includes('/invalid-version/')) {

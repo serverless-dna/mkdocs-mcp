@@ -1,4 +1,4 @@
-import { SEARCH_CONFIDENCE_THRESHOLD } from './constants';
+import { SEARCH_CONFIDENCE_THRESHOLD } from '../src/constants';
 
 import { describe, expect, it } from '@jest/globals';
 

@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-import { MkDocsMarkdownConverter } from './mkdocsMarkdownConverter';
+import { MkDocsMarkdownConverter } from '../../../src/services/markdown/mkdocsMarkdownConverter';
 
 import { describe, expect,it } from '@jest/globals';
 

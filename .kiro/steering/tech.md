@@ -5,7 +5,7 @@
 - **Runtime**: Node.js 18+ (bundled for standalone execution)
 - **Language**: TypeScript 5.8+ with strict mode enabled
 - **Build System**: esbuild (bundled, minified output with sourcemaps)
-- **Package Manager**: pnpm 10.8.0
+- **Package Manager**: npm
 - **Module System**: ESNext with Node resolution
 
 ## Key Dependencies
@@ -28,31 +28,31 @@
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
 # Build (includes lint check, cleans dist, bundles, and makes executable)
-pnpm build
+npm run build
 
 # Run tests
-pnpm test
+npm test
 
 # Run tests with coverage
-pnpm test:ci
+npm run test:ci
 
 # Lint code
-pnpm lint
+npm run lint
 
 # Auto-fix linting issues
-pnpm lint:fix
+npm run lint:fix
 
 # Development build with MCP inspector
-pnpm dev:build
+npm run dev:build
 
 # Release (semantic versioning)
-pnpm release
+npm run release
 
 # Dry-run release
-pnpm release:dry-run
+npm run release:dry-run
 ```
 
 ## Build Configuration

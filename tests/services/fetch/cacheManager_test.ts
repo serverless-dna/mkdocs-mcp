@@ -1,9 +1,8 @@
 import * as fs from 'fs/promises';
 
-import { logger } from '../logger'
-
-import { CacheManager } from './cacheManager';
-import { CacheConfig, ContentType } from './types';
+import { CacheManager } from '../../../src/services/fetch/cacheManager';
+import { CacheConfig, ContentType } from '../../../src/services/fetch/types';
+import { logger } from '../../../src/services/logger'
 
 // Mock fs/promises
 jest.mock('fs/promises', () => ({

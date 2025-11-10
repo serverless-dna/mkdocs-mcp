@@ -1,11 +1,10 @@
-import { logger } from '../../services/logger';
-
-import { buildResponse } from './buildResponse';
+import { logger } from '../../../src/services/logger';
+import { buildResponse } from '../../../src/tools/shared/buildResponse';
 
 import { beforeEach,describe, expect, it, jest } from '@jest/globals';
 
 // Mock logger
-jest.mock('../../services/logger', () => ({
+jest.mock('../../../src/services/logger', () => ({
   logger: {
     debug: jest.fn(),
     error: jest.fn()

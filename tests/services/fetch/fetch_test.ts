@@ -1,6 +1,6 @@
-import { CacheManager } from './cacheManager';
-import { FetchService } from './index';
-import { CacheConfig, ContentType } from './types';
+import { CacheManager } from '../../../src/services/fetch/cacheManager';
+import { FetchService } from '../../../src/services/fetch/index';
+import { CacheConfig, ContentType } from '../../../src/services/fetch/types';
 
 import { defaults } from 'make-fetch-happen';
 
@@ -10,7 +10,7 @@ jest.mock('make-fetch-happen', () => ({
 }));
 
 // Mock CacheManager
-jest.mock('./cacheManager');
+jest.mock('../../../src/services/fetch/cacheManager');
 
 describe('[FetchService] When making HTTP requests', () => {
   let fetchService: FetchService;
