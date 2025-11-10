@@ -2,6 +2,7 @@ import { fetchService } from '../services/fetch';
 import { ContentType } from '../services/fetch/types';
 import { logger } from '../services/logger';
 
+import { VersionNotFoundError } from './errors/VersionErrors';
 import type { SearchIndex, SearchIndexOptions } from './types/searchIndex';
 import type { VersionInfo } from './types/version';
 import { IndexCache } from './IndexCache';
@@ -52,6 +53,11 @@ export class EnhancedSearchIndexFactory {
       const resolution = await this.versionManager.resolveVersion(version);
       
       if (!resolution.valid) {
+        // If we have available versions, throw VersionNotFoundError
+        if (resolution.available && resolution.available.length > 0) {
+          throw new VersionNotFoundError(version || 'undefined', resolution.available);
+        }
+        
         logger.warn(`Invalid version requested: ${version}. ${resolution.error}`);
         return undefined;
       }
@@ -79,6 +85,11 @@ export class EnhancedSearchIndexFactory {
       return searchIndex;
 
     } catch (error) {
+      // Re-throw VersionNotFoundError to preserve version information
+      if (error instanceof VersionNotFoundError) {
+        throw error;
+      }
+      
       logger.error(`Failed to get search index for version ${version}:`, error);
       return undefined;
     }
