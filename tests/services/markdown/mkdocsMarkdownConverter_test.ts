@@ -210,6 +210,110 @@ describe('MkDocsMarkdownConverter', () => {
     });
   });
   
+  describe('Tabbed content processing', () => {
+    it('should convert tabbed-set with multiple tabs', () => {
+      const html = `
+        <body>
+          <div class="tabbed-set">
+            <input type="radio" id="tab1" name="tabs">
+            <label for="tab1">Python</label>
+            <div class="tabbed-content"><p>Python code here</p></div>
+            
+            <input type="radio" id="tab2" name="tabs">
+            <label for="tab2">JavaScript</label>
+            <div class="tabbed-content"><p>JavaScript code here</p></div>
+          </div>
+        </body>
+      `;
+      const result = converter.convert(html, 'https://example.com');
+      
+      // The tabbed content is processed and converted to markdown
+      expect(result.markdown).toContain('Python');
+      expect(result.markdown).toContain('Python code here');
+      expect(result.markdown).toContain('JavaScript');
+      expect(result.markdown).toContain('JavaScript code here');
+    });
+
+    it('should handle tabbed content with nested elements', () => {
+      const html = `
+        <body>
+          <div class="tabbed-set">
+            <input type="radio" id="tab1" name="tabs">
+            <label for="tab1">Example</label>
+            <div class="tabbed-content">
+              <h4>Nested Heading</h4>
+              <p>Nested paragraph</p>
+              <ul><li>List item</li></ul>
+            </div>
+          </div>
+        </body>
+      `;
+      const result = converter.convert(html, 'https://example.com');
+      
+      // The tab label is inserted as a heading, and nested content is preserved
+      expect(result.markdown).toContain('Nested Heading');
+      expect(result.markdown).toContain('Nested paragraph');
+      expect(result.markdown).toContain('List item');
+    });
+
+    it('should handle empty tabbed content', () => {
+      const html = `
+        <body>
+          <div class="tabbed-set">
+            <input type="radio" id="tab1" name="tabs">
+            <label for="tab1">Empty Tab</label>
+            <div class="tabbed-content"></div>
+          </div>
+        </body>
+      `;
+      const result = converter.convert(html, 'https://example.com');
+      
+      // Should not crash with empty content
+      expect(result).toBeDefined();
+      expect(result.markdown).toBeDefined();
+    });
+
+    it('should handle tabbed-set without matching labels', () => {
+      const html = `
+        <body>
+          <div class="tabbed-set">
+            <input type="radio" id="tab1" name="tabs">
+            <label for="nonexistent">Orphan Label</label>
+          </div>
+        </body>
+      `;
+      const result = converter.convert(html, 'https://example.com');
+      
+      // Should not crash, just produce minimal output
+      expect(result).toBeDefined();
+      expect(result.markdown).toBeDefined();
+    });
+
+    it('should process multiple tabbed-sets independently', () => {
+      const html = `
+        <body>
+          <div class="tabbed-set">
+            <input type="radio" id="tab1" name="tabs1">
+            <label for="tab1">Tab A</label>
+            <div class="tabbed-content"><p>Content A</p></div>
+          </div>
+          <p>Between tabs</p>
+          <div class="tabbed-set">
+            <input type="radio" id="tab2" name="tabs2">
+            <label for="tab2">Tab B</label>
+            <div class="tabbed-content"><p>Content B</p></div>
+          </div>
+        </body>
+      `;
+      const result = converter.convert(html, 'https://example.com');
+      
+      // Content from both tabs should be present
+      expect(result.markdown).toContain('Content A');
+      expect(result.markdown).toContain('Between tabs');
+      expect(result.markdown).toContain('Content B');
+    });
+  });
+
   describe('JSON serializability', () => {
     it('should produce JSON-serializable output', () => {
       const html = '<h1>Test</h1><p>Content</p>';
