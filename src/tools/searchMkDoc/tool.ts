@@ -1,4 +1,4 @@
-import { SEARCH_CONFIDENCE_THRESHOLD } from "../../constants";
+import { SEARCH_CONFIDENCE_THRESHOLD, SEARCH_MAX_RESULTS } from "../../constants";
 import { logger } from "../../services/logger";
 import { VersionNotFoundError } from "../../shared/errors/VersionErrors";
 import { SearchIndexFactory } from "../../shared/SearchIndexFactory";
@@ -77,10 +77,11 @@ export const searchMkDoc = async (props: {
       };
     });
 
-    // Filter results by confidence threshold and format for better presentation
+    // Filter results by confidence threshold, limit to max results, and format for better presentation
     const filteredResults = await Promise.all(
       mappedResults
         .filter((result: any) => result.score >= SEARCH_CONFIDENCE_THRESHOLD)
+        .slice(0, SEARCH_MAX_RESULTS)
         .map(async (result: any) => {
           const doc = result.document;
           const url = await buildVersionedUrl(docsUrl, result.ref, version);

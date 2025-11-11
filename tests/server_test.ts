@@ -1,8 +1,8 @@
-import { fetchService } from '../src/services/fetch';
 import { createServer } from '../src/server';
-import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { fetchService } from '../src/services/fetch';
 
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 // Mock dependencies
 jest.mock('../src/services/fetch');

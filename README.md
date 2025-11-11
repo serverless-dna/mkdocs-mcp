@@ -96,6 +96,18 @@ The converter is optimized for MkDocs Material sites and:
 - Converts images to markdown format
 - Resolves all relative URLs to absolute URLs
 
+## Configuration
+
+The server can be configured using environment variables:
+
+- `SEARCH_CONFIDENCE_THRESHOLD`: Minimum confidence score for search results (default: `0.1`)
+- `SEARCH_MAX_RESULTS`: Maximum number of search results to return (default: `10`)
+
+Example:
+```bash
+SEARCH_MAX_RESULTS=20 SEARCH_CONFIDENCE_THRESHOLD=0.2 npx @serverless-dna/mkdocs-mcp https://your-doc-site.com
+```
+
 ## Development
 
 ### Building
