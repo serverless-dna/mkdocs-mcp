@@ -60,41 +60,73 @@ npx -y @serverless-dna/mkdocs-mcp https://your-doc-site.com
 
 #### Search Tool
 
-The server provides a `search_docs` tool with the following parameters:
+The server provides a `searchMkDoc` tool with the following parameters:
 
 - `search`: The search query string
-- `version`: Optional version string (defaults to 'latest')
+- `version`: Optional version string (only for versioned sites)
 
-#### Fetch Documentation Tool
-
-The server provides a `fetch_mkdoc` tool that retrieves and converts documentation pages:
-
-- `url`: The URL of the documentation page to fetch
-
-**Response Format:**
+**Sample Response:**
 ```json
 {
-  "title": "Page Title",
-  "markdown": "# Page Title\n\nConverted markdown content...",
-  "code_examples": [
+  "query": "logger",
+  "version": "latest",
+  "total": 3,
+  "results": [
     {
-      "title": "Example Title",
-      "description": "Short description of the code",
-      "code": "```python\ncode here\n```"
+      "title": "Logger",
+      "url": "https://docs.example.com/latest/core/logger/",
+      "score": 1.2,
+      "preview": "Logger utility for structured logging...",
+      "location": "core/logger/"
+    },
+    {
+      "title": "Configuration",
+      "url": "https://docs.example.com/latest/core/logger/#config",
+      "score": 0.8,
+      "preview": "Configure the logger with custom settings...",
+      "location": "core/logger/#config",
+      "parentArticle": {
+        "title": "Logger",
+        "location": "core/logger/",
+        "url": "https://docs.example.com/latest/core/logger/"
+      }
     }
-  ],
-  "url": "https://docs.example.com/page"
+  ]
 }
 ```
 
-The converter is optimized for MkDocs Material sites and:
-- Extracts clean content from MkDocs Material HTML structure
-- Identifies and labels code blocks with programming languages
-- Extracts code examples with surrounding context (title and description)
-- Unpacks tab views into sequential sections
-- Preserves Mermaid diagrams as code blocks
-- Converts images to markdown format
-- Resolves all relative URLs to absolute URLs
+**Features:**
+- Confidence-based filtering (configurable threshold)
+- Advanced scoring with title matching and boosting
+- Parent article context for section results
+- Limited to top results (configurable, default: 10)
+
+#### Fetch Documentation Tool
+
+The server provides a `fetchMkDoc` tool that retrieves and converts documentation pages:
+
+- `url`: The URL of the documentation page to fetch
+
+**Sample Response:**
+```json
+{
+  "title": "Getting Started",
+  "markdown": "# Getting Started\n\nThis guide will help you...\n\n## Installation\n\n```bash\nnpm install example\n```",
+  "code_examples": [
+    {
+      "title": "Installation",
+      "description": "Install the package using npm",
+      "code": "```bash\nnpm install example\n```"
+    },
+    {
+      "title": "Basic Usage",
+      "description": "Import and initialize the library",
+      "code": "```python\nfrom example import Client\nclient = Client()\n```"
+    }
+  ],
+  "url": "https://docs.example.com/getting-started/"
+}
+```
 
 ## Configuration
 
@@ -102,11 +134,19 @@ The server can be configured using environment variables:
 
 - `SEARCH_CONFIDENCE_THRESHOLD`: Minimum confidence score for search results (default: `0.1`)
 - `SEARCH_MAX_RESULTS`: Maximum number of search results to return (default: `10`)
+- `CACHE_BASE_PATH`: Base directory for cache storage (default: `<system-tmp>/mkdocs-mcp-cache`)
 
 Example:
 ```bash
 SEARCH_MAX_RESULTS=20 SEARCH_CONFIDENCE_THRESHOLD=0.2 npx @serverless-dna/mkdocs-mcp https://your-doc-site.com
 ```
+
+**Cache Location:**
+By default, the server caches search indexes and converted documentation in the system's temporary directory:
+- **macOS/Linux**: `/tmp/mkdocs-mcp-cache` (or `$TMPDIR`)
+- **Windows**: `%TEMP%\mkdocs-mcp-cache`
+
+You can override this with the `CACHE_BASE_PATH` environment variable.
 
 ## Development
 
