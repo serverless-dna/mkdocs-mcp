@@ -1,4 +1,5 @@
 import { fetchService } from './services/fetch';
+import { ContentType } from './services/fetch/types';
 import { logger } from './services/logger';
 import { SearchIndexFactory } from './shared/SearchIndexFactory';
 import {
@@ -10,9 +11,9 @@ import {
 import {
   description as searchMkDocDescription,
   name as searchMkDocName,
-  schema as searchMkDocSchema,
   tool as searchMkDoc,
 } from './tools/searchMkDoc/index';
+import { searchMkDocSchema, searchMkDocSchemaWithoutVersion } from './tools/searchMkDoc/schemas';
 import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from './constants';
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -39,7 +40,7 @@ export const createServer = async (docsUrl: string, searchDoc: string) => {
     logger.info(`🔍 Checking for versions.json at: ${versionsUrl}`);
     
     const response = await fetchService.fetch(versionsUrl, {
-      contentType: 'application/json' as any,
+      contentType: ContentType.WEB_PAGE,
       headers: { 'Accept': 'application/json' }
     });
     
@@ -83,12 +84,15 @@ export const createServer = async (docsUrl: string, searchDoc: string) => {
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
+    // Use the appropriate schema based on whether the site has versioning
+    const searchSchema = hasVersioning ? searchMkDocSchema : searchMkDocSchemaWithoutVersion;
+    
     return {
       tools: [
         {
           name: searchMkDocName,
-          description: `${searchMkDocDescription} for ${searchDoc}. Results are filtered by confidence threshold for relevance.`,
-          inputSchema: zodToJsonSchema(searchMkDocSchema),
+          description: `${searchMkDocDescription} for ${searchDoc}. Results are filtered by confidence threshold for relevance.${hasVersioning ? ` Available versions: ${availableVersions.map(v => v.version).join(', ')}` : ''}`,
+          inputSchema: zodToJsonSchema(searchSchema),
         },
         {
           name: fetchMkDocName,
