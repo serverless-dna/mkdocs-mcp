@@ -25,7 +25,7 @@ const DEFAULT_MAX_TIMEOUT = 10000; // 10 seconds
  */
 export const cacheConfig: CacheConfig = {
   // Base path for all cache directories
-  basePath: process.env.CACHE_BASE_PATH || path.join(os.homedir(), '.mkdocs-mcp'),
+  basePath: process.env.CACHE_BASE_PATH || path.join(os.tmpdir(), 'mkdocs-mcp-cache'),
   
   // Content type specific configurations
   contentTypes: {

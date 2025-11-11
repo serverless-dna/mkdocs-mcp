@@ -5,7 +5,7 @@ import cacheConfig from './config/cache';
 import { fetchService } from './services/fetch';
 import { ContentType } from './services/fetch/types';
 import { logger } from './services/logger';
-import { ConverterFactory } from './services/markdown';
+import { ConversionResult,MkDocsMarkdownConverter } from './services/markdown/mkdocsMarkdownConverter';
 
 import * as cacache from 'cacache';
 
@@ -75,11 +75,11 @@ function getMarkdownCachePath(): string {
 }
 
 /**
- * Check if markdown exists in cache for a given key
+ * Check if conversion result exists in cache for a given key
  * @param cacheKey The cache key
- * @returns The cached markdown or null if not found
+ * @returns The cached conversion result or null if not found
  */
-async function getMarkdownFromCache(cacheKey: string): Promise<string | null> {
+async function getConversionFromCache(cacheKey: string): Promise<ConversionResult | null> {
   try {
     const cachePath = getMarkdownCachePath();
     
@@ -88,47 +88,47 @@ async function getMarkdownFromCache(cacheKey: string): Promise<string | null> {
       .then(() => cacache.get(cachePath, cacheKey))
       .then(data => data.data.toString('utf8'));
     
-    logger.info(`[CACHE HIT] Markdown cache hit for key: ${cacheKey}`);
-    return data;
+    logger.info(`[CACHE HIT] Conversion cache hit for key: ${cacheKey}`);
+    return JSON.parse(data) as ConversionResult;
   } catch (error) {
     // If entry doesn't exist, cacache throws an error
     if ((error as Error).message.includes('ENOENT') || 
         (error as Error).message.includes('not found')) {
-      logger.info(`[CACHE MISS] No markdown in cache for key: ${cacheKey}`);
+      logger.info(`[CACHE MISS] No conversion in cache for key: ${cacheKey}`);
       return null;
     }
     
-    logger.info(`Error reading markdown from cache: ${error}`);
+    logger.info(`Error reading conversion from cache: ${error}`);
     return null;
   }
 }
 
 /**
- * Save markdown to cache
+ * Save conversion result to cache
  * @param cacheKey The cache key
- * @param markdown The markdown content
+ * @param result The conversion result
  */
-async function saveMarkdownToCache(cacheKey: string, markdown: string): Promise<void> {
+async function saveConversionToCache(cacheKey: string, result: ConversionResult): Promise<void> {
   try {
     const cachePath = getMarkdownCachePath();
     
     // Use cacache directly to store the content
-    await cacache.put(cachePath, cacheKey, markdown);
-    logger.info(`[CACHE SAVE] Markdown saved to cache with key: ${cacheKey}`);
+    await cacache.put(cachePath, cacheKey, JSON.stringify(result));
+    logger.info(`[CACHE SAVE] Conversion saved to cache with key: ${cacheKey}`);
   } catch (error) {
-    logger.info(`Error saving markdown to cache: ${error}`);
+    logger.info(`Error saving conversion to cache: ${error}`);
   }
 }
 
 /**
- * Fetches a documentation page and converts it to markdown using the configured converter
+ * Fetches a documentation page and converts it to structured markdown
  * Uses disk-based caching with ETag validation for efficient fetching
- * Also caches the converted markdown to avoid redundant conversions
+ * Also caches the converted result to avoid redundant conversions
  * 
  * @param url The URL of the documentation page to fetch
- * @returns The page content as markdown
+ * @returns The conversion result with markdown and metadata
  */
-export async function fetchDocPage(url: string): Promise<string> {
+export async function fetchDocPage(url: string): Promise<ConversionResult> {
   try {
     // Validate URL for security
     if (!isValidUrl(url)) {
@@ -170,42 +170,41 @@ export async function fetchDocPage(url: string): Promise<string> {
         ? generateMarkdownCacheKey(url, etag)
         : generateMarkdownCacheKey(url, generateContentHash(html));
       
-      // Only check markdown cache when web page is loaded from Cache
-      // If cache MISS on HTML load then we must re-render the Markdown
+      // Only check conversion cache when web page is loaded from Cache
+      // If cache MISS on HTML load then we must re-render the conversion
       if (fromCache) {
-        // Check if we have markdown cached for this specific HTML version
-        const cachedMarkdown = await getMarkdownFromCache(cacheKey);
-        if (cachedMarkdown) {
-          logger.info(`[CACHE HIT] Markdown found in cache for ${url} with key ${cacheKey}`);
-          return cachedMarkdown;
+        // Check if we have conversion cached for this specific HTML version
+        const cachedResult = await getConversionFromCache(cacheKey);
+        if (cachedResult) {
+          logger.info(`[CACHE HIT] Conversion found in cache for ${url} with key ${cacheKey}`);
+          return cachedResult;
         }
       }
       
-      logger.info(`[CACHE MISS] Markdown not found in cache for ${url} with key ${cacheKey}, converting HTML to markdown`);
+      logger.info(`[CACHE MISS] Conversion not found in cache for ${url} with key ${cacheKey}, converting HTML to markdown`);
       
-      // Create an instance of the HTML-to-markdown converter
-      const converter = ConverterFactory.createConverter();
+      // Create an instance of the MkDocs markdown converter
+      const converter = new MkDocsMarkdownConverter();
       
-      // Extract content and convert to markdown
-      const { title, content } = converter.extractContent(html);
+      // Convert HTML to structured markdown
+      const result = converter.convert(html, url);
       
-      // Build markdown content
-      let markdown = '';
-      if (title) {
-        markdown = `# ${title}\n\n`;
-      }
-      markdown += converter.convert(content);
+      // Cache the conversion result for future use
+      await saveConversionToCache(cacheKey, result);
       
-      // Cache the markdown for future use
-      await saveMarkdownToCache(cacheKey, markdown);
-      
-      return markdown;
+      return result;
     } catch (error) {
       throw new Error(`Failed to fetch or process page: ${error instanceof Error ? error.message : String(error)}`);
     }
   } catch (error) {
     logger.info(`Error fetching doc page: ${error}`);
-    return `Error fetching documentation: ${error instanceof Error ? error.message : String(error)}`;
+    // Return error as a ConversionResult
+    return {
+      title: 'Error',
+      markdown: `Error fetching documentation: ${error instanceof Error ? error.message : String(error)}`,
+      code_examples: [],
+      url
+    };
   }
 }
 

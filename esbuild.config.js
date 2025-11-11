@@ -1,5 +1,4 @@
 const { build } = require('esbuild');
-const esbuildPluginPino = require('esbuild-plugin-pino');
 
 async function runBuild() {
   try {
@@ -14,11 +13,7 @@ async function runBuild() {
       banner: {
         js: '#!/usr/bin/env node',
       },
-      plugins: [
-        esbuildPluginPino({
-          transports: [] // No transports needed, we're using direct file output
-        }),
-      ],
+      plugins: [],
       // We're bundling everything for a standalone executable
       external: [],
     });

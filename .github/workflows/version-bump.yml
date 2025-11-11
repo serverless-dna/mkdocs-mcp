@@ -25,42 +25,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10.8.0
-          
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-          
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          cache: 'npm'
             
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
         
       - name: Lint
-        run: pnpm lint
+        run: npm run lint
         
       - name: Build
-        run: pnpm build
+        run: npm run build
         
       - name: Test
-        run: pnpm test:ci
+        run: npm run test:ci
         
       - name: Test Release (Dry Run)
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-        run: pnpm release:dry-run
+        run: npm run release:dry-run
         
       - name: Update or Create GitHub Release Draft
         env:
