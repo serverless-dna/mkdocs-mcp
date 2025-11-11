@@ -1,46 +1,46 @@
 import { createServer } from '../src/server';
 import { logger } from '../src/services/logger';
 
-import { afterEach,beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { afterEach,beforeEach, describe, expect, it } from 'vitest';
 
 // Mock the logger
-jest.mock('../src/services/logger', () => ({
+vi.mock('../src/services/logger', () => ({
   logger: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn()
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn()
   }
 }));
 
 
 
 // Mock the server module
-jest.mock('../src/server', () => ({
-  createServer: jest.fn()
+vi.mock('../src/server', () => ({
+  createServer: vi.fn()
 }));
 
 // Mock the StdioServerTransport
-jest.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: jest.fn()
+vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
+  StdioServerTransport: vi.fn()
 }));
 
-const mockLogger = logger as jest.Mocked<typeof logger>;
-const mockCreateServer = createServer as jest.MockedFunction<typeof createServer>;
-const mockStdioServerTransport = StdioServerTransport as jest.MockedFunction<typeof StdioServerTransport>;
+const mockLogger = logger as vi.Mocked<typeof logger>;
+const mockCreateServer = createServer as vi.MockedFunction<typeof createServer>;
+const mockStdioServerTransport = StdioServerTransport as vi.MockedFunction<typeof StdioServerTransport>;
 
 describe('MkDocs MCP Server', () => {
   let originalArgv: string[];
   let originalExit: typeof process.exit;
-  let mockExit: jest.MockedFunction<typeof process.exit>;
+  let mockExit: vi.MockedFunction<typeof process.exit>;
 
   beforeEach(() => {
     originalArgv = process.argv;
     originalExit = process.exit;
-    mockExit = jest.fn() as any;
+    mockExit = vi.fn() as any;
     process.exit = mockExit;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -55,7 +55,7 @@ describe('MkDocs MCP Server', () => {
 
       // Mock server and transport
       const mockServer = {
-        connect: jest.fn().mockResolvedValue(undefined)
+        connect: vi.fn().mockResolvedValue(undefined)
       };
       const mockTransport = {};
       
@@ -81,7 +81,7 @@ describe('MkDocs MCP Server', () => {
 
       // Mock server and transport
       const mockServer = {
-        connect: jest.fn().mockResolvedValue(undefined)
+        connect: vi.fn().mockResolvedValue(undefined)
       };
       const mockTransport = {};
       
@@ -112,7 +112,7 @@ describe('MkDocs MCP Server', () => {
 
       // Mock server that throws on connect
       const mockServer = {
-        connect: jest.fn().mockRejectedValue(new Error('Connection failed'))
+        connect: vi.fn().mockRejectedValue(new Error('Connection failed'))
       };
       const mockTransport = {};
       

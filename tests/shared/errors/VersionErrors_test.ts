@@ -1,7 +1,7 @@
 import { IndexLoadError, VersionDetectionError, VersionNotFoundError } from '../../../src/shared/errors/VersionErrors';
 import type { VersionInfo } from '../../../src/shared/types/version';
 
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 
 describe('VersionErrors', () => {
   describe('VersionNotFoundError', () => {

@@ -1,21 +1,21 @@
 import { logger } from '../../../src/services/logger';
 import { buildResponse } from '../../../src/tools/shared/buildResponse';
 
-import { beforeEach,describe, expect, it, jest } from '@jest/globals';
+import { beforeEach,describe, expect, it } from 'vitest';
 
 // Mock logger
-jest.mock('../../../src/services/logger', () => ({
+vi.mock('../../../src/services/logger', () => ({
   logger: {
-    debug: jest.fn(),
-    error: jest.fn()
+    debug: vi.fn(),
+    error: vi.fn()
   }
 }));
 
-const mockLogger = logger as jest.Mocked<typeof logger>;
+const mockLogger = logger as vi.Mocked<typeof logger>;
 
 describe('[BuildResponse Utility]', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('When building successful responses', () => {

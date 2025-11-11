@@ -5,11 +5,11 @@ import { CacheConfig, ContentType } from '../../../src/services/fetch/types';
 import { logger } from '../../../src/services/logger'
 
 // Mock fs/promises
-jest.mock('fs/promises', () => ({
-  access: jest.fn(),
-  readdir: jest.fn(),
-  stat: jest.fn(),
-  unlink: jest.fn()
+vi.mock('fs/promises', () => ({
+  access: vi.fn(),
+  readdir: vi.fn(),
+  stat: vi.fn(),
+  unlink: vi.fn()
 }));
 
 describe('[CacheManager] When managing cache files', () => {
@@ -31,9 +31,9 @@ describe('[CacheManager] When managing cache files', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     cacheManager = new CacheManager(mockConfig);
-    logger.info = jest.fn();
+    logger.info = vi.fn();
   });
 
   it('should get the correct cache path for a content type', () => {

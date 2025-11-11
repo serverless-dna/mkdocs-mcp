@@ -6,7 +6,7 @@ inclusion: always
    
    Learn about inclusion modes: https://kiro.dev/docs/steering/#inclusion-modes
 -------------------------------------------------------------------------------------> 
-- Complete all tasks without pausing
+- Complete all tasks without pausing - keep working to compelte each task thenmove to the next.
 - At the end of each task, ask yourself: "Did I complete this task properly?"
 - If you are unsure, ask for help
 - If you are stuck, ask for help

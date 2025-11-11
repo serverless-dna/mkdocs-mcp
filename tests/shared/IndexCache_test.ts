@@ -2,15 +2,15 @@ import { logger } from '../../src/services/logger';
 import { IndexCache } from '../../src/shared/IndexCache';
 
 // Mock the logger
-jest.mock('../../src/services/logger');
-const mockLogger = logger as jest.Mocked<typeof logger>;
+vi.mock('../../src/services/logger');
+const mockLogger = logger as vi.Mocked<typeof logger>;
 
 describe('IndexCache', () => {
   let cache: IndexCache<any>;
 
   beforeEach(() => {
     cache = new IndexCache();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('basic operations', () => {

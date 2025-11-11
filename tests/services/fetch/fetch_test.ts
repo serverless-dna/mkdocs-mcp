@@ -5,12 +5,12 @@ import { CacheConfig, ContentType } from '../../../src/services/fetch/types';
 import { defaults } from 'make-fetch-happen';
 
 // Mock make-fetch-happen
-jest.mock('make-fetch-happen', () => ({
-  defaults: jest.fn().mockImplementation(() => jest.fn())
+vi.mock('make-fetch-happen', () => ({
+  defaults: vi.fn().mockImplementation(() => vi.fn())
 }));
 
 // Mock CacheManager
-jest.mock('../../../src/services/fetch/cacheManager');
+vi.mock('../../../src/services/fetch/cacheManager');
 
 describe('[FetchService] When making HTTP requests', () => {
   let fetchService: FetchService;
@@ -35,19 +35,19 @@ describe('[FetchService] When making HTTP requests', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Setup CacheManager mock with proper methods
     mockCacheManager = {
-      clearCache: jest.fn().mockResolvedValue(undefined),
-      clearAllCaches: jest.fn().mockResolvedValue(undefined),
-      getStats: jest.fn().mockResolvedValue({
+      clearCache: vi.fn().mockResolvedValue(undefined),
+      clearAllCaches: vi.fn().mockResolvedValue(undefined),
+      getStats: vi.fn().mockResolvedValue({
         size: 1000,
         entries: 10,
         oldestEntry: new Date(),
         newestEntry: new Date()
       }),
-      clearOlderThan: jest.fn().mockResolvedValue(5)
+      clearOlderThan: vi.fn().mockResolvedValue(5)
     };
     
     // Set up the mock to return our mockCacheManager
@@ -73,8 +73,8 @@ describe('[FetchService] When making HTTP requests', () => {
     it('should use explicit content type from options', async () => {
       // Create mock fetch instances
       const mockFetchInstances = new Map();
-      const mockWebPageFetch = jest.fn().mockResolvedValue('web-page-response');
-      const mockSearchIndexFetch = jest.fn().mockResolvedValue('search-index-response');
+      const mockWebPageFetch = vi.fn().mockResolvedValue('web-page-response');
+      const mockSearchIndexFetch = vi.fn().mockResolvedValue('search-index-response');
       
       mockFetchInstances.set(ContentType.WEB_PAGE, mockWebPageFetch);
       mockFetchInstances.set(ContentType.SEARCH_INDEX, mockSearchIndexFetch);
@@ -93,8 +93,8 @@ describe('[FetchService] When making HTTP requests', () => {
     it('should determine content type based on URL pattern', async () => {
       // Create mock fetch instances
       const mockFetchInstances = new Map();
-      const mockWebPageFetch = jest.fn().mockResolvedValue('web-page-response');
-      const mockSearchIndexFetch = jest.fn().mockResolvedValue('search-index-response');
+      const mockWebPageFetch = vi.fn().mockResolvedValue('web-page-response');
+      const mockSearchIndexFetch = vi.fn().mockResolvedValue('search-index-response');
       
       mockFetchInstances.set(ContentType.WEB_PAGE, mockWebPageFetch);
       mockFetchInstances.set(ContentType.MARKDOWN, mockSearchIndexFetch);
@@ -113,8 +113,8 @@ describe('[FetchService] When making HTTP requests', () => {
     it('should use web page content type for regular URLs', async () => {
       // Create mock fetch instances
       const mockFetchInstances = new Map();
-      const mockWebPageFetch = jest.fn().mockResolvedValue('web-page-response');
-      const mockSearchIndexFetch = jest.fn().mockResolvedValue('search-index-response');
+      const mockWebPageFetch = vi.fn().mockResolvedValue('web-page-response');
+      const mockSearchIndexFetch = vi.fn().mockResolvedValue('search-index-response');
       
       mockFetchInstances.set(ContentType.WEB_PAGE, mockWebPageFetch);
       mockFetchInstances.set(ContentType.SEARCH_INDEX, mockSearchIndexFetch);
@@ -135,7 +135,7 @@ describe('[FetchService] When making HTTP requests', () => {
     it('should use the correct fetch instance for web page content type', async () => {
       // Create mock fetch instances
       const mockFetchInstances = new Map();
-      const mockWebPageFetch = jest.fn().mockResolvedValue('web-page-response');
+      const mockWebPageFetch = vi.fn().mockResolvedValue('web-page-response');
       
       mockFetchInstances.set(ContentType.WEB_PAGE, mockWebPageFetch);
       
@@ -156,7 +156,7 @@ describe('[FetchService] When making HTTP requests', () => {
     it('should use the correct fetch instance for search index content type', async () => {
       // Create mock fetch instances
       const mockFetchInstances = new Map();
-      const mockSearchIndexFetch = jest.fn().mockResolvedValue('search-index-response');
+      const mockSearchIndexFetch = vi.fn().mockResolvedValue('search-index-response');
       
       mockFetchInstances.set(ContentType.SEARCH_INDEX, mockSearchIndexFetch);
       

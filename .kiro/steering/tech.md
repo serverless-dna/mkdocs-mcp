@@ -2,7 +2,7 @@
 
 ## Core Technologies
 
-- **Runtime**: Node.js 18+ (bundled for standalone execution)
+- **Runtime**: Node.js 20+ (bundled for standalone execution)
 - **Language**: TypeScript 5.8+ with strict mode enabled
 - **Build System**: esbuild (bundled, minified output with sourcemaps)
 - **Package Manager**: npm
@@ -57,7 +57,7 @@ npm run release:dry-run
 
 ## Build Configuration
 
-- **Target**: ES2022, Node 18+
+- **Target**: ES2022, Node 20+
 - **Output**: Single bundled executable in `dist/index.js` with shebang
 - **Bundling**: All dependencies bundled (no externals)
 - **Source Maps**: Enabled for debugging

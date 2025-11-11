@@ -2,19 +2,19 @@ import { fetchService } from '../../src/services/fetch';
 import { VersionNotFoundError } from '../../src/shared/errors/VersionErrors';
 import { SearchIndexFactory } from '../../src/shared/SearchIndexFactory';
 
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 // Mock dependencies
-jest.mock('../../src/services/fetch');
-jest.mock('../../src/services/logger');
+vi.mock('../../src/services/fetch');
+vi.mock('../../src/services/logger');
 
-const mockFetchService = fetchService as jest.Mocked<typeof fetchService>;
+const mockFetchService = fetchService as vi.Mocked<typeof fetchService>;
 
 describe('[SearchIndexFactory]', () => {
   let factory: SearchIndexFactory;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     factory = new SearchIndexFactory('https://docs.example.com', { hasVersioning: true });
   });
 
@@ -22,8 +22,8 @@ describe('[SearchIndexFactory]', () => {
     it('should throw VersionNotFoundError when invalid version is requested with available versions', async () => {
       // Mock the version manager to return versioned site and invalid version
       const mockVersionManager = {
-        detectVersioning: jest.fn().mockResolvedValue(true),
-        resolveVersion: jest.fn().mockResolvedValue({
+        detectVersioning: vi.fn().mockResolvedValue(true),
+        resolveVersion: vi.fn().mockResolvedValue({
           valid: false,
           resolved: '3.x',
           available: [
@@ -57,8 +57,8 @@ describe('[SearchIndexFactory]', () => {
     it('should return undefined when invalid version is requested without available versions', async () => {
       // Mock the version manager to return versioned site and invalid version without available versions
       const mockVersionManager = {
-        detectVersioning: jest.fn().mockResolvedValue(true),
-        resolveVersion: jest.fn().mockResolvedValue({
+        detectVersioning: vi.fn().mockResolvedValue(true),
+        resolveVersion: vi.fn().mockResolvedValue({
           valid: false,
           resolved: '3.x',
           available: undefined,
@@ -77,8 +77,8 @@ describe('[SearchIndexFactory]', () => {
     it('should return undefined when invalid version is requested with empty available versions', async () => {
       // Mock the version manager to return versioned site and invalid version with empty available versions
       const mockVersionManager = {
-        detectVersioning: jest.fn().mockResolvedValue(true),
-        resolveVersion: jest.fn().mockResolvedValue({
+        detectVersioning: vi.fn().mockResolvedValue(true),
+        resolveVersion: vi.fn().mockResolvedValue({
           valid: false,
           resolved: '3.x',
           available: [],
@@ -103,7 +103,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
           config: { lang: ['en'], separator: ' ', pipeline: [] },
           docs: [
             { location: 'index/', title: 'Home', text: 'Welcome to the docs' }
@@ -137,7 +137,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -166,7 +166,7 @@ describe('[SearchIndexFactory]', () => {
           ok: true,
           status: 200,
           statusText: 'OK',
-          json: jest.fn().mockResolvedValue(mockIndex)
+          json: vi.fn().mockResolvedValue(mockIndex)
         } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -213,7 +213,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       // First call should fetch
@@ -242,7 +242,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       // Request with version should be ignored
@@ -269,7 +269,7 @@ describe('[SearchIndexFactory]', () => {
           ok: true,
           status: 200,
           statusText: 'OK',
-          json: jest.fn().mockResolvedValue(mockIndex)
+          json: vi.fn().mockResolvedValue(mockIndex)
         } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -301,7 +301,7 @@ describe('[SearchIndexFactory]', () => {
     it('should return cached index on subsequent calls for versioned site', async () => {
       // Mock version manager
       const mockVersionManager = {
-        resolveVersion: jest.fn().mockResolvedValue({
+        resolveVersion: vi.fn().mockResolvedValue({
           valid: true,
           resolved: 'latest',
           isDefault: true,
@@ -312,7 +312,7 @@ describe('[SearchIndexFactory]', () => {
 
       // Mock index loader
       const mockIndexLoader = {
-        loadIndex: jest.fn().mockResolvedValue({
+        loadIndex: vi.fn().mockResolvedValue({
           version: 'latest',
           url: 'https://docs.example.com/latest/search/search_index.json',
           index: {},
@@ -339,7 +339,7 @@ describe('[SearchIndexFactory]', () => {
     it('should clear cache for specific version', async () => {
       // Mock version manager
       const mockVersionManager = {
-        resolveVersion: jest.fn().mockResolvedValue({
+        resolveVersion: vi.fn().mockResolvedValue({
           valid: true,
           resolved: '1.0.0',
           isDefault: false,
@@ -350,7 +350,7 @@ describe('[SearchIndexFactory]', () => {
 
       // Mock index loader
       const mockIndexLoader = {
-        loadIndex: jest.fn().mockResolvedValue({
+        loadIndex: vi.fn().mockResolvedValue({
           version: '1.0.0',
           url: 'https://docs.example.com/1.0.0/search/search_index.json',
           index: {},
@@ -375,7 +375,7 @@ describe('[SearchIndexFactory]', () => {
     it('should clear all cache when no version specified', async () => {
       // Mock version manager
       const mockVersionManager = {
-        resolveVersion: jest.fn()
+        resolveVersion: vi.fn()
           .mockResolvedValueOnce({
             valid: true,
             resolved: 'latest',
@@ -405,7 +405,7 @@ describe('[SearchIndexFactory]', () => {
 
       // Mock index loader
       const mockIndexLoader = {
-        loadIndex: jest.fn()
+        loadIndex: vi.fn()
           .mockResolvedValueOnce({
             version: 'latest',
             url: 'https://docs.example.com/latest/search/search_index.json',
@@ -468,7 +468,7 @@ describe('[SearchIndexFactory]', () => {
     it('should track cache hits and misses', async () => {
       // Mock version manager
       const mockVersionManager = {
-        resolveVersion: jest.fn().mockResolvedValue({
+        resolveVersion: vi.fn().mockResolvedValue({
           valid: true,
           resolved: 'latest',
           isDefault: true,
@@ -479,7 +479,7 @@ describe('[SearchIndexFactory]', () => {
 
       // Mock index loader
       const mockIndexLoader = {
-        loadIndex: jest.fn().mockResolvedValue({
+        loadIndex: vi.fn().mockResolvedValue({
           version: 'latest',
           url: 'https://docs.example.com/latest/search/search_index.json',
           index: {},
@@ -524,7 +524,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -561,7 +561,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -586,7 +586,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -609,7 +609,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -634,7 +634,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -658,7 +658,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -688,7 +688,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -730,7 +730,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -753,7 +753,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const beforeLoad = new Date();
@@ -778,7 +778,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await nonVersionedFactory.getSearchIndex();
@@ -806,7 +806,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await factory.getIndex();
@@ -820,7 +820,7 @@ describe('[SearchIndexFactory]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue(mockIndex)
+        json: vi.fn().mockResolvedValue(mockIndex)
       } as any);
 
       const result = await factory.getIndex('latest');
@@ -838,7 +838,7 @@ describe('[SearchIndexFactory]', () => {
 
       // Mock version manager
       const mockVersionManager = {
-        resolveVersion: jest.fn().mockResolvedValue({
+        resolveVersion: vi.fn().mockResolvedValue({
           valid: true,
           resolved: 'latest',
           isDefault: true,
@@ -866,7 +866,7 @@ describe('[SearchIndexFactory]', () => {
 
       // Mock version manager
       const mockVersionManager = {
-        getAvailableVersions: jest.fn().mockResolvedValue([
+        getAvailableVersions: vi.fn().mockResolvedValue([
           { version: 'latest', title: 'Latest', aliases: ['main'] },
           { version: '1.0.0', title: 'Version 1.0', aliases: [] }
         ])

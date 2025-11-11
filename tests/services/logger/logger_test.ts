@@ -1,13 +1,13 @@
 
 import { logger } from '../../../src/services/logger/logger';
 
-import { afterEach,beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach,beforeEach, describe, expect, it, jest } from 'vitest';
 
 describe('[Logger] Simple stderr logger', () => {
   let stderrSpy: jest.SpiedFunction<typeof process.stderr.write>;
   
   beforeEach(() => {
-    stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
   });
 
   afterEach(() => {

@@ -13,30 +13,30 @@ import { ContentType } from '../src/services/fetch/types';
 
 import * as cacache from 'cacache';
 
-jest.mock('../src/services/fetch', () => ({
+vi.mock('../src/services/fetch', () => ({
   fetchService: {
-    fetch: jest.fn(),
-    clearCache: jest.fn()
+    fetch: vi.fn(),
+    clearCache: vi.fn()
   }
 }));
 
 // Mock cacache directly with a simple implementation
-jest.mock('cacache', () => ({
-  get: jest.fn().mockImplementation(() => Promise.resolve({
+vi.mock('cacache', () => ({
+  get: vi.fn().mockImplementation(() => Promise.resolve({
     data: Buffer.from('cached content'),
     metadata: {}
   })),
-  put: jest.fn().mockResolvedValue(),
+  put: vi.fn().mockResolvedValue(),
   rm: {
-    all: jest.fn().mockResolvedValue()
+    all: vi.fn().mockResolvedValue()
   }
 }));
 
 // Mock crypto
-jest.mock('crypto', () => ({
-  createHash: jest.fn().mockReturnValue({
-    update: jest.fn().mockReturnThis(),
-    digest: jest.fn().mockReturnValue('mocked-hash')
+vi.mock('crypto', () => ({
+  createHash: vi.fn().mockReturnValue({
+    update: vi.fn().mockReturnThis(),
+    digest: vi.fn().mockReturnValue('mocked-hash')
   })
 }));
 
@@ -61,7 +61,7 @@ class MockHeaders {
 
 describe('[DocFetcher] When fetching documentation pages', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   
   it('should fetch a page and convert it to markdown', async () => {
@@ -82,11 +82,11 @@ describe('[DocFetcher] When fetching documentation pages', () => {
       status: 200,
       statusText: 'OK',
       headers: new MockHeaders({ 'etag': 'abc123' }),
-      text: jest.fn().mockResolvedValueOnce(mockHtml)
+      text: vi.fn().mockResolvedValueOnce(mockHtml)
     });
     
     // Mock cacache.get.info to throw ENOENT (cache miss)
-    (cacache.get as any).info = jest.fn().mockRejectedValueOnce(new Error('ENOENT'));
+    (cacache.get as any).info = vi.fn().mockRejectedValueOnce(new Error('ENOENT'));
     
     // Act
     const url = 'https://example.com/latest/core/logger/';
@@ -101,7 +101,7 @@ describe('[DocFetcher] When fetching documentation pages', () => {
   
   it('should reject invalid URLs', async () => {
     // Mock isValidUrl to return false for this test
-    jest.spyOn(global, 'URL').mockImplementationOnce(() => {
+    vi.spyOn(global, 'URL').mockImplementationOnce(() => {
       throw new Error('Invalid URL');
     });
     
@@ -156,7 +156,7 @@ describe('[DocFetcher] When fetching documentation pages', () => {
 
 describe('[DocFetcher] When clearing the cache', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   
   it('should clear both web page and markdown caches', async () => {

@@ -1,14 +1,14 @@
 import { createServer } from '../src/server';
 import { fetchService } from '../src/services/fetch';
 
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 // Mock dependencies
-jest.mock('../src/services/fetch');
-jest.mock('../src/services/logger');
+vi.mock('../src/services/fetch');
+vi.mock('../src/services/logger');
 
-const mockFetchService = fetchService as jest.Mocked<typeof fetchService>;
+const mockFetchService = fetchService as vi.Mocked<typeof fetchService>;
 
 // Helper to call list tools handler
 async function getToolsList(server: any) {
@@ -20,7 +20,7 @@ async function getToolsList(server: any) {
 
 describe('[Server]', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Tool Schema Registration', () => {
@@ -30,7 +30,7 @@ describe('[Server]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue([
+        json: vi.fn().mockResolvedValue([
           { version: 'v1.0', title: 'Version 1.0', aliases: ['1.0'] },
           { version: 'v2.0', title: 'Version 2.0', aliases: ['2.0', 'latest'] }
         ])
@@ -70,7 +70,7 @@ describe('[Server]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue([])
+        json: vi.fn().mockResolvedValue([])
       } as any);
 
       const server = await createServer('https://docs.example.com', 'Test Docs');
@@ -101,7 +101,7 @@ describe('[Server]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue([
+        json: vi.fn().mockResolvedValue([
           { version: 'v1.0', title: 'Version 1.0', aliases: [] }
         ])
       } as any);
@@ -114,7 +114,7 @@ describe('[Server]', () => {
       expect(versionedSearchTool.inputSchema.properties.search.type).toBe('string');
 
       // Test with non-versioned site
-      jest.clearAllMocks();
+      vi.clearAllMocks();
       mockFetchService.fetch.mockResolvedValue({
         ok: false,
         status: 404,
@@ -135,7 +135,7 @@ describe('[Server]', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
-        json: jest.fn().mockResolvedValue([
+        json: vi.fn().mockResolvedValue([
           { version: 'v1.0', title: 'Version 1.0', aliases: [] }
         ])
       } as any);

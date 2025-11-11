@@ -3,21 +3,21 @@ import { IndexLoader } from '../../src/shared/IndexLoader';
 import { VersionManager } from '../../src/shared/VersionManager';
 
 // Mock the dependencies
-jest.mock('../../src/services/logger');
-jest.mock('../../src/shared/VersionManager');
+vi.mock('../../src/services/logger');
+vi.mock('../../src/shared/VersionManager');
 
-const mockLogger = logger as jest.Mocked<typeof logger>;
-const MockVersionManager = VersionManager as jest.MockedClass<typeof VersionManager>;
+const mockLogger = logger as vi.Mocked<typeof logger>;
+const MockVersionManager = VersionManager as vi.MockedClass<typeof VersionManager>;
 
 describe('IndexLoader', () => {
   let indexLoader: IndexLoader<any>;
-  let mockVersionManager: jest.Mocked<VersionManager>;
+  let mockVersionManager: vi.Mocked<VersionManager>;
   const baseUrl = 'https://example.com';
 
   beforeEach(() => {
-    mockVersionManager = new MockVersionManager(baseUrl) as jest.Mocked<VersionManager>;
+    mockVersionManager = new MockVersionManager(baseUrl) as vi.Mocked<VersionManager>;
     indexLoader = new IndexLoader(baseUrl, mockVersionManager);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -27,7 +27,7 @@ describe('IndexLoader', () => {
   describe('loadIndex', () => {
     it('should load index successfully with provided loader', async () => {
       const mockData = { index: 'test-data', documents: new Map() };
-      const mockLoader = jest.fn().mockResolvedValue(mockData);
+      const mockLoader = vi.fn().mockResolvedValue(mockData);
 
       const result = await indexLoader.loadIndex('v1.0', mockLoader);
 
@@ -43,7 +43,7 @@ describe('IndexLoader', () => {
 
     it('should load index for default version when no version specified', async () => {
       const mockData = { index: 'default-data' };
-      const mockLoader = jest.fn().mockResolvedValue(mockData);
+      const mockLoader = vi.fn().mockResolvedValue(mockData);
 
       const result = await indexLoader.loadIndex(undefined, mockLoader);
 
@@ -62,7 +62,7 @@ describe('IndexLoader', () => {
 
     it('should handle loader errors and propagate them', async () => {
       const mockError = new Error('Load failed');
-      const mockLoader = jest.fn().mockRejectedValue(mockError);
+      const mockLoader = vi.fn().mockRejectedValue(mockError);
 
       await expect(indexLoader.loadIndex('v1.0', mockLoader)).rejects.toThrow('Load failed');
       
@@ -74,7 +74,7 @@ describe('IndexLoader', () => {
 
     it('should log load time on successful completion', async () => {
       const mockData = { index: 'test-data' };
-      const mockLoader = jest.fn().mockResolvedValue(mockData);
+      const mockLoader = vi.fn().mockResolvedValue(mockData);
 
       await indexLoader.loadIndex('v1.0', mockLoader);
 
@@ -87,7 +87,7 @@ describe('IndexLoader', () => {
   describe('concurrent access control', () => {
     it('should prevent duplicate loading for same version', async () => {
       const mockData = { index: 'test-data' };
-      const mockLoader = jest.fn().mockImplementation(() => 
+      const mockLoader = vi.fn().mockImplementation(() => 
         new Promise(resolve => setTimeout(() => resolve(mockData), 50))
       );
 
@@ -108,8 +108,8 @@ describe('IndexLoader', () => {
     it('should allow concurrent loading for different versions', async () => {
       const mockData1 = { index: 'test-data-v1' };
       const mockData2 = { index: 'test-data-v2' };
-      const mockLoader1 = jest.fn().mockResolvedValue(mockData1);
-      const mockLoader2 = jest.fn().mockResolvedValue(mockData2);
+      const mockLoader1 = vi.fn().mockResolvedValue(mockData1);
+      const mockLoader2 = vi.fn().mockResolvedValue(mockData2);
 
       // Start concurrent loads for different versions
       const promise1 = indexLoader.loadIndex('v1.0', mockLoader1);
@@ -125,7 +125,7 @@ describe('IndexLoader', () => {
 
     it('should handle errors in concurrent loading', async () => {
       const mockError = new Error('Load failed');
-      const mockLoader = jest.fn().mockRejectedValue(mockError);
+      const mockLoader = vi.fn().mockRejectedValue(mockError);
 
       // Start two concurrent loads that will fail
       const promise1 = indexLoader.loadIndex('v1.0', mockLoader);
@@ -137,7 +137,7 @@ describe('IndexLoader', () => {
 
     it('should clean up loading state after completion', async () => {
       const mockData = { index: 'test-data' };
-      const mockLoader = jest.fn().mockResolvedValue(mockData);
+      const mockLoader = vi.fn().mockResolvedValue(mockData);
 
       expect(indexLoader.isLoading('v1.0')).toBe(false);
       expect(indexLoader.getLoadingPromise('v1.0')).toBeUndefined();
@@ -150,7 +150,7 @@ describe('IndexLoader', () => {
 
     it('should clean up loading state after error', async () => {
       const mockError = new Error('Load failed');
-      const mockLoader = jest.fn().mockRejectedValue(mockError);
+      const mockLoader = vi.fn().mockRejectedValue(mockError);
 
       expect(indexLoader.isLoading('v1.0')).toBe(false);
 
@@ -165,7 +165,7 @@ describe('IndexLoader', () => {
     it('should track loading state correctly', async () => {
       const mockData = { index: 'test-data' };
       let resolveLoader: (value: any) => void;
-      const mockLoader = jest.fn().mockImplementation(() => 
+      const mockLoader = vi.fn().mockImplementation(() => 
         new Promise(resolve => { resolveLoader = resolve; })
       );
 
@@ -192,10 +192,10 @@ describe('IndexLoader', () => {
       let resolveLoader1: (value: any) => void;
       let resolveLoader2: (value: any) => void;
       
-      const mockLoader1 = jest.fn().mockImplementation(() => 
+      const mockLoader1 = vi.fn().mockImplementation(() => 
         new Promise(resolve => { resolveLoader1 = resolve; })
       );
-      const mockLoader2 = jest.fn().mockImplementation(() => 
+      const mockLoader2 = vi.fn().mockImplementation(() => 
         new Promise(resolve => { resolveLoader2 = resolve; })
       );
 
@@ -230,7 +230,7 @@ describe('IndexLoader', () => {
     it('should clear all loading state', async () => {
       const mockData = { index: 'test-data' };
       let resolveLoader: (value: any) => void;
-      const mockLoader = jest.fn().mockImplementation(() => 
+      const mockLoader = vi.fn().mockImplementation(() => 
         new Promise(resolve => { resolveLoader = resolve; })
       );
 
@@ -284,7 +284,7 @@ describe('IndexLoader', () => {
   describe('error scenarios', () => {
     it('should handle loader function throwing synchronously', async () => {
       const mockError = new Error('Synchronous error');
-      const mockLoader = jest.fn().mockImplementation(() => {
+      const mockLoader = vi.fn().mockImplementation(() => {
         throw mockError;
       });
 
@@ -298,7 +298,7 @@ describe('IndexLoader', () => {
 
     it('should handle loader function returning rejected promise', async () => {
       const mockError = new Error('Async error');
-      const mockLoader = jest.fn().mockRejectedValue(mockError);
+      const mockLoader = vi.fn().mockRejectedValue(mockError);
 
       await expect(indexLoader.loadIndex('v1.0', mockLoader)).rejects.toThrow('Async error');
       
@@ -312,8 +312,8 @@ describe('IndexLoader', () => {
       const mockData = { index: 'success-data' };
       const mockError = new Error('Load failed');
       
-      const successLoader = jest.fn().mockResolvedValue(mockData);
-      const failLoader = jest.fn().mockRejectedValue(mockError);
+      const successLoader = vi.fn().mockResolvedValue(mockData);
+      const failLoader = vi.fn().mockRejectedValue(mockError);
 
       // Start concurrent loads - one success, one failure
       const successPromise = indexLoader.loadIndex('v1.0', successLoader);
@@ -343,7 +343,7 @@ describe('IndexLoader', () => {
         metadata: { loadedAt: new Date(), size: 1024 }
       };
 
-      const mockLoader = jest.fn().mockImplementation(async () => {
+      const mockLoader = vi.fn().mockImplementation(async () => {
         // Simulate some async work
         await new Promise(resolve => setTimeout(resolve, 10));
         return mockSearchIndex;
@@ -358,7 +358,7 @@ describe('IndexLoader', () => {
 
     it('should handle rapid successive loads for same version', async () => {
       const mockData = { index: 'test-data' };
-      const mockLoader = jest.fn().mockImplementation(() => 
+      const mockLoader = vi.fn().mockImplementation(() => 
         new Promise(resolve => setTimeout(() => resolve(mockData), 20))
       );
 

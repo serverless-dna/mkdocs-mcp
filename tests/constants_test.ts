@@ -1,6 +1,6 @@
 import { SEARCH_CONFIDENCE_THRESHOLD } from '../src/constants';
 
-import { describe, expect, it } from '@jest/globals';
+import { describe, expect, it } from 'vitest';
 
 describe('[Constants]', () => {
   describe('SEARCH_CONFIDENCE_THRESHOLD', () => {

@@ -3,11 +3,11 @@ import { logger } from '../../src/services/logger';
 import { VersionManager } from '../../src/shared/VersionManager';
 
 // Mock the dependencies
-jest.mock('../../src/services/fetch');
-jest.mock('../../src/services/logger');
+vi.mock('../../src/services/fetch');
+vi.mock('../../src/services/logger');
 
-const mockFetchService = fetchService as jest.Mocked<typeof fetchService>;
-const mockLogger = logger as jest.Mocked<typeof logger>;
+const mockFetchService = fetchService as vi.Mocked<typeof fetchService>;
+const mockLogger = logger as vi.Mocked<typeof logger>;
 
 describe('VersionManager', () => {
   let versionManager: VersionManager;
@@ -15,7 +15,7 @@ describe('VersionManager', () => {
 
   beforeEach(() => {
     versionManager = new VersionManager(baseUrl);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -28,7 +28,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn()
+        json: vi.fn()
       } as any);
 
       const result = await versionManager.detectVersioning();
@@ -116,7 +116,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue(mockVersions)
+        json: vi.fn().mockResolvedValue(mockVersions)
       } as any);
 
       const result = await versionManager.fetchVersions();
@@ -145,7 +145,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue('not an array')
+        json: vi.fn().mockResolvedValue('not an array')
       } as any);
 
       const result = await versionManager.fetchVersions();
@@ -167,7 +167,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue(invalidVersions)
+        json: vi.fn().mockResolvedValue(invalidVersions)
       } as any);
 
       const result = await versionManager.fetchVersions();
@@ -181,7 +181,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue(mockVersions)
+        json: vi.fn().mockResolvedValue(mockVersions)
       } as any);
 
       // First call
@@ -200,7 +200,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue(mockVersions)
+        json: vi.fn().mockResolvedValue(mockVersions)
       } as any);
 
       // First call
@@ -223,7 +223,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue(versionsWithoutAliases)
+        json: vi.fn().mockResolvedValue(versionsWithoutAliases)
       } as any);
 
       const result = await versionManager.fetchVersions();
@@ -246,7 +246,7 @@ describe('VersionManager', () => {
           return Promise.resolve({
             ok: true,
             status: 200,
-            json: jest.fn().mockResolvedValue(mockVersions)
+            json: vi.fn().mockResolvedValue(mockVersions)
           } as any);
         }
         return Promise.resolve({ ok: false, status: 404 } as any);
@@ -331,7 +331,7 @@ describe('VersionManager', () => {
           return Promise.resolve({
             ok: true,
             status: 200,
-            json: jest.fn().mockResolvedValue([])
+            json: vi.fn().mockResolvedValue([])
           } as any);
         }
         return Promise.resolve({ ok: false, status: 404 } as any);
@@ -372,7 +372,7 @@ describe('VersionManager', () => {
           return Promise.resolve({
             ok: true,
             status: 200,
-            json: jest.fn().mockResolvedValue(mockVersions)
+            json: vi.fn().mockResolvedValue(mockVersions)
           } as any);
         }
         return Promise.resolve({ ok: false, status: 404 } as any);
@@ -404,7 +404,7 @@ describe('VersionManager', () => {
           return Promise.resolve({
             ok: true,
             status: 200,
-            json: jest.fn().mockResolvedValue(mockVersions)
+            json: vi.fn().mockResolvedValue(mockVersions)
           } as any);
         }
         return Promise.resolve({ ok: false, status: 404 } as any);
@@ -425,7 +425,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue(mockVersions)
+        json: vi.fn().mockResolvedValue(mockVersions)
       } as any);
 
       const result = await versionManager.getAvailableVersions();
@@ -440,7 +440,7 @@ describe('VersionManager', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockResolvedValue([])
+        json: vi.fn().mockResolvedValue([])
       } as any);
 
       await versionManager.detectVersioning();

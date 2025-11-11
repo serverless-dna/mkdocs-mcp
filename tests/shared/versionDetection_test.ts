@@ -3,15 +3,15 @@ import { logger } from '../../src/services/logger';
 import { buildVersionedUrl, clearVersionDetectionCache, detectVersioning } from '../../src/shared/versionDetection';
 
 // Mock dependencies
-jest.mock('../../src/services/fetch');
-jest.mock('../../src/services/logger');
+vi.mock('../../src/services/fetch');
+vi.mock('../../src/services/logger');
 
-const mockFetchService = fetchService as jest.Mocked<typeof fetchService>;
-const mockLogger = logger as jest.Mocked<typeof logger>;
+const mockFetchService = fetchService as vi.Mocked<typeof fetchService>;
+const mockLogger = logger as vi.Mocked<typeof logger>;
 
 describe('versionDetection', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     clearVersionDetectionCache();
   });
 
@@ -234,7 +234,7 @@ describe('versionDetection', () => {
       mockFetchService.fetch.mockResolvedValue({
         ok: true,
         status: 200,
-        json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+        json: vi.fn().mockRejectedValue(new Error('Invalid JSON'))
       } as any);
 
       const result = await detectVersioning('https://docs.example.com');

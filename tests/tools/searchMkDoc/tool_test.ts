@@ -4,50 +4,50 @@ import { SearchIndexFactory } from '../../../src/shared/SearchIndexFactory';
 import { searchMkDoc } from '../../../src/tools/searchMkDoc/tool';
 import { buildResponse } from '../../../src/tools/shared/buildResponse';
 
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 // Mock dependencies
-jest.mock('../../../src/shared/SearchIndexFactory');
-jest.mock('../../../src/tools/shared/buildResponse');
-jest.mock('../../../src/shared/versionDetection', () => ({
-  buildVersionedUrl: jest.fn((baseUrl, path, version) => {
+vi.mock('../../../src/shared/SearchIndexFactory');
+vi.mock('../../../src/tools/shared/buildResponse');
+vi.mock('../../../src/shared/versionDetection', () => ({
+  buildVersionedUrl: vi.fn((baseUrl, path, version) => {
     if (version) {
       return Promise.resolve(`${baseUrl}/${version}/${path}`);
     }
     return Promise.resolve(`${baseUrl}/${path}`);
   }),
-  detectVersioning: jest.fn(() => Promise.resolve(true))
+  detectVersioning: vi.fn(() => Promise.resolve(true))
 }));
-jest.mock('../../../src/services/logger', () => ({
+vi.mock('../../../src/services/logger', () => ({
   logger: {
-    info: jest.fn(),
-    debug: jest.fn(),
-    error: jest.fn()
+    info: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn()
   }
 }));
 
-const MockedSearchIndexFactory = SearchIndexFactory as jest.MockedClass<typeof SearchIndexFactory>;
-const mockBuildResponse = buildResponse as jest.MockedFunction<typeof buildResponse>;
+const MockedSearchIndexFactory = SearchIndexFactory as vi.MockedClass<typeof SearchIndexFactory>;
+const mockBuildResponse = buildResponse as vi.MockedFunction<typeof buildResponse>;
 
 describe('[SearchMkDoc Tool]', () => {
-  let mockFactory: jest.Mocked<SearchIndexFactory>;
+  let mockFactory: vi.Mocked<SearchIndexFactory>;
   let mockSearchIndex: any;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockBuildResponse.mockImplementation(({ content }) => ({ content } as any));
     
     // Create mock search index
     mockSearchIndex = {
       index: {
-        search: jest.fn()
+        search: vi.fn()
       },
       documents: new Map()
     };
     
     // Create mock factory
     mockFactory = {
-      getSearchIndex: jest.fn().mockResolvedValue(mockSearchIndex)
+      getSearchIndex: vi.fn().mockResolvedValue(mockSearchIndex)
     } as any;
     
     MockedSearchIndexFactory.mockImplementation(() => mockFactory);

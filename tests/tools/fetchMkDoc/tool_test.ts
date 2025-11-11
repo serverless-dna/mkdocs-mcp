@@ -2,24 +2,24 @@ import { fetchDocPage } from '../../../src/fetch-doc';
 import { fetchMkDoc } from '../../../src/tools/fetchMkDoc/tool';
 import { buildResponse } from '../../../src/tools/shared/buildResponse';
 
-import { beforeEach,describe, expect, it, jest } from '@jest/globals';
+import { beforeEach,describe, expect, it } from 'vitest';
 
 // Mock dependencies
-jest.mock('../../../src/fetch-doc');
-jest.mock('../../../src/tools/shared/buildResponse');
-jest.mock('../../../src/services/logger', () => ({
+vi.mock('../../../src/fetch-doc');
+vi.mock('../../../src/tools/shared/buildResponse');
+vi.mock('../../../src/services/logger', () => ({
   logger: {
-    info: jest.fn(),
-    error: jest.fn()
+    info: vi.fn(),
+    error: vi.fn()
   }
 }));
 
-const mockFetchDocPage = fetchDocPage as jest.MockedFunction<typeof fetchDocPage>;
-const mockBuildResponse = buildResponse as jest.MockedFunction<typeof buildResponse>;
+const mockFetchDocPage = fetchDocPage as vi.MockedFunction<typeof fetchDocPage>;
+const mockBuildResponse = buildResponse as vi.MockedFunction<typeof buildResponse>;
 
 describe('[FetchMkDoc Tool]', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockBuildResponse.mockImplementation(({ content }) => ({ content } as any));
   });
 

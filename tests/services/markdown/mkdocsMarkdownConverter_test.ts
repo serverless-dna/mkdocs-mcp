@@ -3,7 +3,7 @@ import { join } from 'path';
 
 import { MkDocsMarkdownConverter } from '../../../src/services/markdown/mkdocsMarkdownConverter';
 
-import { describe, expect,it } from '@jest/globals';
+import { describe, expect,it } from 'vitest';
 
 describe('MkDocsMarkdownConverter', () => {
   let converter: MkDocsMarkdownConverter;
