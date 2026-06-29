@@ -11,6 +11,9 @@
  */
 import * as path from 'path';
 
+import { logger } from '../logger';
+
+import { applyAuthToRequest, AuthConfig, redactAuthHeaders } from './auth';
 import { CacheManager } from './cacheManager';
 import { CacheConfig, CacheStats, ContentType, FetchOptions, Response } from './types';
 
@@ -38,14 +41,26 @@ export class FetchService {
   private readonly cacheManager: CacheManager;
 
   /**
+   * Authentication configuration applied to every outbound request.
+   * Defaults to `{ type: 'none' }` for public sites.
+   */
+  private authConfig: AuthConfig = { type: 'none' };
+
+  /**
    * Creates a new FetchService instance with content-type specific caching
-   * 
+   *
    * @param config - Cache configuration defining base path and content type settings
+   * @param authConfig - Optional authentication configuration. When omitted the
+   *   service operates in "public" mode (no auth headers, no URL rewriting).
+   *   Auth can also be supplied later via {@link configureAuth}.
    * @throws Error if the configuration is invalid or cache directories cannot be accessed
    */
-  constructor(config: CacheConfig) {
+  constructor(config: CacheConfig, authConfig?: AuthConfig) {
     this.config = config;
     this.cacheManager = new CacheManager(config);
+    if (authConfig) {
+      this.authConfig = authConfig;
+    }
 
     // Initialize fetch instances for each content type
     if (config.contentTypes) {
@@ -130,23 +145,51 @@ export class FetchService {
    * ```
    */
   public fetchWithContentType(
-    url: string | URL, 
-    contentType: ContentType, 
+    url: string | URL,
+    contentType: ContentType,
     options?: FetchOptions
   ): Promise<Response> {
     const fetchInstance = this.fetchInstances.get(contentType);
     if (!fetchInstance) {
       throw new Error(`No fetch instance configured for content type: ${contentType}`);
     }
-    
-    // Add headers to enable conditional requests
-    const headers = options?.headers || {};
-    
+
+    // Apply authentication: this may rewrite the URL (for the github-api
+    // scheme) and/or add headers. For the default `none` scheme it is a no-op.
+    const { url: authedUrl, headers: authedHeaders } = applyAuthToRequest(
+      url.toString(),
+      options?.headers,
+      this.authConfig
+    );
+
+    if (this.authConfig.type !== 'none') {
+      logger.debug(
+        `[fetch] ${authedUrl} headers=${JSON.stringify(redactAuthHeaders(authedHeaders))}`
+      );
+    }
+
     // Perform the fetch with proper caching
-    return fetchInstance(url, {
+    return fetchInstance(authedUrl, {
       ...options,
-      headers
+      headers: authedHeaders,
     });
+  }
+
+  /**
+   * Set or replace the authentication configuration used for subsequent
+   * requests. Useful when the auth context isn't known at construction time
+   * (e.g. parsed from environment variables in a startup hook).
+   */
+  public configureAuth(authConfig: AuthConfig): void {
+    this.authConfig = authConfig;
+  }
+
+  /**
+   * Returns the currently configured auth scheme name. Exposed for diagnostics
+   * and tests; never returns secret material.
+   */
+  public getAuthType(): AuthConfig['type'] {
+    return this.authConfig.type;
   }
 
   /**

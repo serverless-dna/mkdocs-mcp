@@ -255,6 +255,27 @@ export class SearchIndexFactory {
       logger.info(`📡 Search index response: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
+        // Heuristic: a private GitHub Pages site responds 200/30x with HTML
+        // (the SSO/login page) when the caller is unauthenticated. The fetch
+        // layer follows redirects and may surface this as a non-OK response,
+        // a 401/403, or even 200 with text/html. We try to give the user a
+        // useful nudge instead of just "Failed to fetch search index".
+        const contentType = response.headers.get('content-type') || '';
+        const looksLikeAuthFailure =
+          response.status === 401 ||
+          response.status === 403 ||
+          response.status === 404 ||
+          (contentType.includes('text/html') && new URL(response.url || indexUrl).hostname.toLowerCase().endsWith('github.com'));
+
+        if (looksLikeAuthFailure) {
+          throw new Error(
+            `Failed to fetch search index: ${response.status} ${response.statusText}. ` +
+              `If this is a private GitHub Pages site, set MKDOCS_AUTH_TYPE=github-api ` +
+              `and provide a token via MKDOCS_GITHUB_TOKEN / GITHUB_TOKEN / ` +
+              `GITHUB_PERSONAL_ACCESS_TOKEN with read access to the repository's gh-pages branch.`
+          );
+        }
+
         throw new Error(`Failed to fetch search index: ${response.status} ${response.statusText}`);
       }
 

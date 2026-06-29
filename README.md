@@ -136,6 +136,96 @@ The server can be configured using environment variables:
 - `SEARCH_MAX_RESULTS`: Maximum number of search results to return (default: `10`)
 - `CACHE_BASE_PATH`: Base directory for cache storage (default: `<system-tmp>/mkdocs-mcp-cache`)
 
+### Authentication (private GitHub Pages docs)
+
+By default the server fetches documents anonymously, which works for any
+publicly published MkDocs site. For sites published as **private GitHub Pages**
+(`x-pages-private: 1` — common in GitHub Enterprise / SAML-protected orgs),
+anonymous fetches are redirected to a login page, so the search index can't be
+loaded.
+
+For these sites the server supports a `github-api` auth scheme. Instead of
+fighting the Pages cookie/SSO flow, it transparently rewrites every request
+from a GitHub Pages URL to the equivalent
+[GitHub Contents API](https://docs.github.com/en/rest/repos/contents) call,
+which **does** accept a Personal Access Token. The same `search_index.json` is
+served, so MkDocs lunr indexing, scoring, and version handling are unchanged —
+only the transport changes.
+
+#### Configuration
+
+| Env var | Required | Default | Notes |
+|---|---|---|---|
+| `MKDOCS_AUTH_TYPE` | yes | `none` | Set to `github-api` to enable the rewrite. |
+| `MKDOCS_GITHUB_TOKEN` | yes\* | — | PAT with `Contents: Read` access to the repo. Falls back to `GITHUB_TOKEN`, then `GITHUB_PERSONAL_ACCESS_TOKEN`. |
+| `MKDOCS_GITHUB_OWNER` | no | inferred | Repository owner. Inferred from the docs URL host (`https://<owner>.github.io/...`). |
+| `MKDOCS_GITHUB_REPO` | no | inferred | Repository name. Inferred from the docs URL path (`https://<owner>.github.io/<repo>/...`). |
+| `MKDOCS_GITHUB_REF` | no | `gh-pages` | Branch / tag / commit that contains the built MkDocs site (i.e. the artifact `mkdocs gh-deploy` pushed). |
+| `MKDOCS_GITHUB_SUBPATH` | no | `` | Sub-directory inside the ref where the site lives (e.g. `site` if the artifact is under `site/`). |
+
+\* A token is mandatory whenever `MKDOCS_AUTH_TYPE=github-api`. The MCP server
+exits at startup if no token is found.
+
+#### Required PAT permissions
+
+- **Fine-grained tokens**: grant **Repository contents – Read-only** on the
+  specific docs repository, plus the SSO authorization for the enterprise/org
+  if applicable.
+- **Classic tokens**: grant the `repo` scope (private) or `public_repo` scope
+  (public). Make sure the token is SAML-SSO-authorized for the org if your
+  enterprise enforces SAML.
+
+#### Example MCP configuration (Claude Desktop / Cline)
+
+```json
+{
+  "mcpServers": {
+    "my-private-docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@serverless-dna/mkdocs-mcp",
+        "https://<owner>.github.io/<repo>",
+        "Search the private internal documentation site"
+      ],
+      "env": {
+        "MKDOCS_AUTH_TYPE": "github-api",
+        "MKDOCS_GITHUB_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    }
+  }
+}
+```
+
+If your site is hosted from a non-default branch (for example `main` with the
+docs under `docs/site/`), spell that out explicitly:
+
+```json
+"env": {
+  "MKDOCS_AUTH_TYPE": "github-api",
+  "MKDOCS_GITHUB_TOKEN": "ghp_...",
+  "MKDOCS_GITHUB_REF": "main",
+  "MKDOCS_GITHUB_SUBPATH": "docs/site"
+}
+```
+
+#### Cache isolation
+
+When auth is enabled, on-disk caches are placed under a subdirectory derived
+from a hash of the auth identity (token + repo + ref). This prevents two
+different identities sharing a `CACHE_BASE_PATH` from accidentally reading
+each other's cached responses.
+
+#### Why a PAT can't be used directly against `*.github.io`
+
+Private GitHub Pages requests don't honour `Authorization: Bearer <PAT>`. They
+go through a separate browser-only flow that issues a `__Host-gh_pages_session`
+cookie after validating a logged-in `_gh_sess`. Tokens cannot initiate that
+flow. The `github-api` scheme works around this by talking to `api.github.com`
+(which **does** accept PATs) and reading the rendered site straight out of the
+configured `ref` — same bytes, different transport.
+
+
 Example:
 ```bash
 SEARCH_MAX_RESULTS=20 SEARCH_CONFIDENCE_THRESHOLD=0.2 npx @serverless-dna/mkdocs-mcp https://your-doc-site.com
